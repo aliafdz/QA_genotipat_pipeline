@@ -63,8 +63,7 @@ for(i in 1:length(out.flnms))
   es <- system(command,intern=FALSE,wait=TRUE,show.output.on.console=FALSE,
               ignore.stdout=FALSE,invisible=TRUE)
   if(es!=0) next
-  # Sobreescriu el fitxer de 'from' en 'to'. Es guarda el fitxer resultant (to) en la carpeta
-  # global del projecte
+  # Copia el fitxer de 'from' en 'to'. Es guarda el fitxer resultant (to) en la carpeta flash
   file.copy(from="out.extendedFrags.fastq",to=out.flnms[i],overwrite=TRUE)
   
   # sqq <- readFastq(dirPath=".",patt="out.extendedFrags.fastq")
@@ -108,6 +107,7 @@ pdf(pdf.flnm,paper="a4",width=6,height=10)
 par(mfrow=c(2,1))
 
 library(RColorBrewer)
+
 pal=brewer.pal(8,"Dark2") # Crea la paleta de colors
 M <- data.matrix(df.res[,1:2]) # Guarda les columnes 1 i 2 de la taula de resultats
 ymx <- max(M)*1.15 # Defineix límit superior del gràfic

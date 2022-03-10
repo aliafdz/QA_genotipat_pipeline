@@ -31,6 +31,7 @@ flash <- "C:/FLASH/flash.exe" # Carpeta on es troba l'executable FLASH.
 flash.opts <- paste("-m",min.ov,"-M",max.ov,"-x",err.lv)  
 
 ### Chunck size to be used by FastqStreamer() --> Buscar info
+# Nombre de registres successius a retornar a cada rendiment (yield)
 chunck.sz <- 1.e6
 
 tm <- integer(10) # Vector amb 10 nombres 0

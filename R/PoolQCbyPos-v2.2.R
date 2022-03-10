@@ -3,36 +3,52 @@ library(ShortRead)
 library(Biostrings)
 library(stringr)
 
+# Funció que es cridarà després 
 fn.fastq <- function(flnm,ln=301)
-{
+{ # Defineix una matriu de dimensions 5x301 de 0s
   fnm.q <- matrix(0,nrow=5,ncol=ln)
+  # Vector de 5 0s
   fnm.l <- numeric(5)
+  # Variable numèrica
   nrds <- numeric()
+  # Variable de nombre enter
   all.ln <- integer()
   
-  ###  Set streamer on fastq file
-  strm <- FastqStreamer(flnm,n=chunck.sz)
-  ###  Load fastq file by chuncks
+  ### Aplica streamer (iteració) en el fitxer fastq
+  strm <- FastqStreamer(flnm,n=chunck.sz) # chunck.sz definit en el fitxer principal
   nchk <- 0
+  ###  Carrega el fitxer fastq per chuncks
   while(length(sqq <- yield(strm)))
-  { nchk <- nchk+1
-    nrds[nchk] <- length(sqq)
-	###  Phred scores. Codi ASCII-33
+  { nchk <- nchk+1 # Nº de cada iteració
+    nrds[nchk] <- length(sqq) # L'item de la iteració avaluada correspondrà a la longitud de la seq
+	
+    ###  Phred scores. Codi ASCII-33
+    # Funció 'quality()' retorna el valor de qualitat dels strings
+    # Funció 'as()' permet fer coerció del resultat a matriu
     phrsc <- as(quality(sqq),"matrix")
+  
+    # Guarda el valor mínim entre la variable ln=301 i les columnes de la matriu amb les qualitats dels strings  
 	nc <- min(ln,ncol(phrsc))
+	  # De les columnes 1 al mínim assignat abans, aplica els quantils del vector a les columnes
+	  # de la matriu amb les qualitats phrsc, i ho multiplica per la longitud de la seq
     fnm.q[,1:nc] <- fnm.q[,1:nc] + 
 	               apply(phrsc,2,quantile,p=c(0.05,0.25,0.5,0.75,0.95),
 	                     na.rm=TRUE)[,1:nc] * nrds[nchk]
-    ###  Longituds de sequencia
-    sqln <- width(sqq)	
-    all.ln <- c(all.ln,sqln)	
+    
+    ###  Longituds de seqüència
+    sqln <- width(sqq) # Cicles de seqüenciació (301)
+    all.ln <- c(all.ln,sqln) # Vector amb el nº de cicles com a nombres enters
+    # Aplica els quantils per guardar-los en la llista de 5 columnes de 0 (1 columna per quantil)
+    # i guarda els resultats multiplicats per la longitud de la seq
     fnm.l <- fnm.l + quantile(sqln,p=c(0.05,0.25,0.5,0.75,0.95),
 	                     na.rm=TRUE) * nrds[nchk]
   }
   close(strm)
+  # Retorna una llista ...
   return(list(fvnq=fnm.q/sum(nrds),fvnl=fnm.l/sum(nrds),all.ln=all.ln))
 }  
 
+# Gràfic de QC per posició i SW dels reads originals abans de flash
 plot.R1R2 <- function(fvnm1,fvnm2,snm,SW=FALSE)
 { nc <- ncol(fvnm1)
   plot(1:nc,fvnm1[2,],type="l",col="navy",ylim=c(0,40),xaxt="n",
@@ -58,6 +74,7 @@ plot.R1R2 <- function(fvnm1,fvnm2,snm,SW=FALSE)
     title(main=paste("Quality profile by position:",snm))
 }
 
+# Gràfic de QC per posició i SW dels reads després de filtrar per FLASH
 plot.flash <- function(fvnm)
 { nc <- ncol(fvnm)
   bxp.dt <- list(stats=fvnm,names=1:ncol(fvnm))
@@ -81,68 +98,93 @@ flashDir <- "./flash"
 repDir <- "./reports"
 dataDir <- "./data"
 
-###  Llegim l'estructura de descripci� de mostres
+###  Llegeix l'estructura de descripció de mostres
+# La taula conté columnes: Patient.ID, MID, Primer.ID, Region, RefSeq.ID, Pool.Nm
 samples <- read.table(file.path(dataDir,"samples.csv"), sep="\t", header=T,
                       colClasses="character",stringsAsFactors=F)
 ###  Llista de pools en samples
 pools <- unique(samples$Pool.Nm)
-###  Llegim descriptors de primers
+
+###  Llegeix els descriptors de primers
+# La taula conté les columnes: Ampl.Nm, Region, Primer.FW, Primer.RV, FW.pos, RV.pos, FW.tpos, RV.tpos, Aa.ipos, Aa.lpos
 primers <- read.table(file.path(dataDir,"primers.csv"), sep="\t", header=T,
                       stringsAsFactors=F)
-###  Longitud de l'amplic� major en cada pool
+
+###  Longitud de l'amplicó major en cada pool
 max.len.in.pool <- function(p)
-{ idx <- which(samples$Pool.Nm==p)
+{ # Guarda els items de la taula de mostres que corresponen al pool avaluat
+  idx <- which(samples$Pool.Nm==p)
+  # Si no hi ha cap item que correspongui retorna 0
   if(length(idx)==0) return(0)
+  # Guarda l'item de l'amplicó de la taula primers que es troba en el ID del primer en taula de mostres
   idx <- which(primers$Ampl.Nm %in% samples$Primer.ID[idx])
+  # Calcula el màxim de la resta entre la posició del primer reverse de l'amplicó avaluat i la posició del forward
   max(primers$RV.pos[idx]-primers$FW.pos[idx]+1)  
 }
-pln <- sapply(pools,max.len.in.pool)					  
-###  Amb MID+M13
+# Aplica la funció en els dos pools per guardar la longitud de l'amplicó major
+# Com en aquest cas totes les mostres del mateix pool fan servir els mateixos primers, només hi ha un amplicó per pool
+pln <- sapply(pools,max.len.in.pool)
+
+### S'afegeix a la longitud de l'amplicó la longitud del MID i M13
 pln <- pln + 2*(20+10)
 
-###  Fitxers que resulten de Flash				
+### Fitxers que resulten de Flash				
 flnms <- list.files(flashDir)
+# Guarda del fitxer només el nom del pool seguit de S1 o S2
 snms <- sub("_flash\\.fastq$","",flnms)
+# Genera una taula amb el nom del pool en una columna i S1 o S2 en una altra
 parts <- t(sapply(snms,function(str) strsplit(str,split="_")[[1]]))
 if(is.vector(parts))
   parts <- matrix(parts,nrow=1)
 colnames(parts) <- c("PatID","SmplID")
 
-###  Fitxers R1 i R2 origen
+### Fitxers R1 i R2 originals, de la carpeta run
 R1.flnms <- paste(snms,"_L001_R1_001.fastq.gz",sep="")
 R2.flnms <- paste(snms,"_L001_R2_001.fastq.gz",sep="")
 
-###  Sincronitzar
+### Sincronitza la longitud dels amplicons dels pools amb el nom d'aquests
 pln <- pln[parts[,"PatID"]]
 
-###  Loop sobre pools
+### Loop sobre pools
 binsz <- 10
 for(i in 1:length(snms))
-{ 
+{ # Genera el pdf PoolQCbyPos del pool avaluat
   pdf.flnm <- paste("PoolQCbyPos",parts[i,1],"pdf",sep=".")
+  # Genera la ruta on es guardarà el pdf (reports)
   pdf(file.path(repDir,pdf.flnm),paper="a4r",width=10.5,height=6.5)
   par(mfrow=c(2,1),mar=c(3,4,1.5,2)+0.1)
+  # Aplica la funció del principi sobre els fitxers R1 i R2 del pool
+  # Això és pel gràfic d'abans de flash, avalua la qualitat dels reads inicials
   lst1 <- fn.fastq(file.path(runDir,R1.flnms[i]))
+  # 
   fvnm1 <- lst1$fvnq
   lst2 <- fn.fastq(file.path(runDir,R2.flnms[i]))
   fvnm2 <- lst2$fvnq
+  # Genera el gràfic a partir de la segona funció definida
   plot.R1R2(fvnm1,fvnm2,snms[i])
+  
+  # Aplica la primera funció sobre els fastq resultants de flash
   lst <- fn.fastq(file.path(flashDir,flnms[i]),pln[i])
   fvnm <- lst$fvnq
+  # Genera el gràfic de la 3a funció definida
   plot.flash(fvnm)
 
   nc <- ncol(fvnm1)
-  fvnm1 <- sapply(1:(nc-10),function(iwin) 
+    fvnm1 <- sapply(1:(nc-10),function(iwin) 
              rowMeans(fvnm1[,iwin:(iwin+9),drop=FALSE]))
+ 
   nc <- ncol(fvnm2)
   fvnm2 <- sapply(1:(nc-10),function(iwin) 
              rowMeans(fvnm2[,iwin:(iwin+9),drop=FALSE]))
+  # Gràfic SW pels fitxers originals de run
   plot.R1R2(fvnm1,fvnm2,snms[i],TRUE)
+  
   nc <- ncol(fvnm)
   fvnm <- sapply(1:(nc-10),function(iwin) 
              rowMeans(fvnm[,iwin:(iwin+9),drop=FALSE]))
+  
   plot.flash(fvnm)
-
+  # Gràfic de la longitud dels reads abans i després de flash
   par(mfrow=c(1,2))  
   stats=cbind(lst1$fvnl,lst2$fvnl,lst$fvnl)
   colnames(stats) <- c("R1","R2","Flash")
