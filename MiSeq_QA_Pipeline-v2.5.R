@@ -8,6 +8,7 @@ library(Biostrings)
 library(ShortRead)
 
 ## Definim els directoris (carpetes) indicant la ruta:
+
 # Directori on trobem els arxius de codi que s'aniran cridant. 
 codeDir <- "./R" 
 # Carpeta data on trobem els primers, pacients, mids, seq de referència, codi genètic, etc. 
