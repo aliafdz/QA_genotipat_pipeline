@@ -28,7 +28,7 @@ fn.fastq <- function(flnm,ln=301) # ln és 301 per defecte, però en realitat é
     phrsc <- as(quality(sqq),"matrix")
   
     # Guarda el valor mínim entre la variable ln i les columnes de la matriu amb les qualitats dels strings  
-	nc <- min(ln,ncol(phrsc))
+	  nc <- min(ln,ncol(phrsc))
 	  # De les columnes 1 al mínim assignat abans, aplica els quantils del vector a les columnes
 	  # de la matriu amb les qualitats phrsc, i ho multiplica pel total de reads
 	  # Cada fila es un quantil i cada columna es un cicle de seqüenciació 

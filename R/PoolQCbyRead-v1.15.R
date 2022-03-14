@@ -86,7 +86,7 @@ for(i in 1:length(snms))
        paste(q95,q80,med,sep="\n"))
   title(main=parts[i,"PatID"],line=1)
   
-  # Dividez les bases<30 entre el nº de cicles -> fracció de les bases per read
+  # Divideix les bases<30 entre el nº de cicles -> fracció de les bases per read
   all.fnl30 <- lst1$all.nl30/lst1$all.ln
   # D'aquesta matriu de divisió agafa els valors per sota del quantil 0.99
   fnl30 <- all.fnl30[all.fnl30<quantile(all.fnl30,p=0.99)]
