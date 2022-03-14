@@ -13,43 +13,43 @@ library(ShortRead)
 
 max.middif <- 1
 
-###  Llegim l'estructura de descripciÛ de mostres
+###  Llegeix l'estructura de descripci√≥ de mostres
 samples <- read.table(file.path(dataDir,"samples.csv"), sep="\t", header=T,
                       stringsAsFactors=F)
-# Guardem la columna Pools (regions 5' o preS1). 'unique' per eliminar elements duplicats (nomÈs hi haur‡ 2)
+# Guarda la columna Pools (regions 5' o preS1). 'unique' per eliminar elements duplicats (nom√©s hi haur√† 2)
 pools <- unique(samples$Pool.Nm)
 
-###  Llegim fitxers globals de HBV
+###  Llegeix el fitxer d'identificaci√≥ dels mids
 mids <- read.table(file.path(dataDir,"mids.csv"), sep="\t", header=T,
                    stringsAsFactors=F)
 
-###  Llista de fitxers disponibles (obtinguts per pipeline QA)
+###  Llista de fitxers fastq disponibles en la carpeta flash 
 flnms <- list.files(flashDir)
 
 ###  Inicialitzacions
 # 'paste' per concatenar strings separats per punt.
-# AixÌ identifiques cada MID (mostra) amb la regiÛ avaluada (pool).
+# Aix√≠ s'identifica cada MID (mostra) amb la regi√≥ avaluada (pool).
 nms <- unique(paste(samples$Pool.Nm,samples$MID,sep="."))
 
-# 'strsplit' separa la concatenaciÛ del pas anterior; 'as.data.frame' ho transforma en taula, perÚ est‡ en horitzontal.
-# 't' fa la transposiciÛ perquË estigui en vertical (en files)
+# 'strsplit' separa la concatenaci√≥ del pas anterior; 'as.data.frame' ho transforma en taula, per√≤ est√† en horitzontal.
+# 't' fa la transposici√≥ perqu√® estigui en vertical (en files)
 items <- t(as.data.frame(strsplit(nms,split="\\.")))
 
-# Guardem les entrades de nms, serien el total de mostres (2 per pacient)
+# Guarda les entrades de nms, serien el total de mostres (2 per pacient)
 Ns <- length(nms)
 
 # Taula d'abans (convertint els MIDS com a nombres enters) afegint una 3a columna anomenada Reads, que inicialment 
-# Ès tot 0 (al fer la funciÛ 'integer' sobre un nombre, retorna tants 0 com nombres posis a la funciÛ).
+# √©s tot 0.
 pr.res <- data.frame(Pool.Nm=items[,1],MID=as.integer(items[,2]),
                      Reads=integer(Ns),stringsAsFactors=FALSE)
 
-# Indiquem com a nom de les files de la taula l'indicador nms (del tipus Pool.MID) .
+# Indica com a nom de les files de la taula l'indicador nms (del tipus Pool.MID) 
 rownames(pr.res) <- nms
-# Guarda una llista de tants 0 com pools tenim, en aquest cas 2.
+# Guarda una llista de tants 0 com pools tenim, en aquest cas 2. Aqu√≠ es guardar√† el n¬∫ de reads no assignats
 MID0.reads <- integer(length(pools))
 # Associa aquests 0 als 2 pools (li assigna el nom)
 names(MID0.reads) <- pools
-# Fa el mateix perÚ per associar-ho a pools en lloc de MIDS
+# Guarda la llista on es guardar√† el n¬∫ de reads totals per pool
 pool.reads <- integer(length(pools))
 names(pool.reads) <- pools
 
@@ -58,28 +58,28 @@ names(pool.reads) <- pools
 for(i in 1:length(pools))
 {
   ###  Identificar fastq del pool
-  # Busca dins dels arxius de la carpeta flashDir el fitxer per cada pool (regiÛ VHB).
-  # 'grep' serveix per buscar un patrÛ dins d'un vector de caracters, i retorna l'index del vector que encaixa amb la cerca
+  # Busca dins dels arxius de la carpeta flashDir el fitxer per cada pool (regi√≥ VHB).
+  # 'grep' serveix per buscar un patr√≥ dins d'un vector de caracters, i retorna l'index del vector que encaixa amb la cerca
   ip <- grep(paste(pools[i],"_",sep=""),flnms) 
-  # Si no troba l'arxiu de la iteraciÛ que est‡ fent se'l salta i passa a la seg¸ent iteraciÛ.
+  # Si no troba l'arxiu de la iteraci√≥ que est√† fent se'l salta i passa a la seg√ºent iteraci√≥.
   if(length(ip)==0) next
   
   ###  Identificar MIDs en pool
   # 'which' retorna els elements que compleixen el que s'indica com argument. En aquest cas, 
-  # quins elements de la columna Pool coincideixen amb el que s'est‡ iterant.
+  # quins elements de la columna Pool coincideixen amb el que s'est√† iterant.
   idx <- which(samples$Pool.Nm==pools[i])
   # Igual que abans, si no coincideix cap torna a iterar. 
   if(length(idx)==0) next
   
   ###  Identificar MIDs en pool
-  # Guarda els MIDS que corresponen al pool que s'est‡ avaluant. 
+  # Guarda els MIDS que corresponen al pool que s'est√† avaluant. 
   mid.set <- unique(samples$MID[idx])
-
+  
   ###  Aplicar streamer en el fitxer fastq 
-  # La funciÛ 'FastqStreamer' llegeix l'arxiu fastq que estem iterant del directori flash i retorna
+  # La funci√≥ 'FastqStreamer' llegeix l'arxiu fastq que estem iterant del directori flash i retorna
   # parts successives d'aquest.
   strm <- FastqStreamer(file.path(flashDir,flnms[ip]))
-  p.cv <- 0 # n∫ inicial de reads a 0
+  p.cv <- 0 # n¬∫ inicial de reads a 0
   app.flag <- m0.app.flag <- FALSE
   
   ###  Carrega el fitxer fastq per chuncks
@@ -87,58 +87,59 @@ for(i in 1:length(pools))
   while(length(sqq <- yield(strm)))
   { seqs <- sread(sqq) # Guarda la seq de cada conjunt o chunck
   
-    ###  Actualitza el n∫ total de reads
-    p.cv <- p.cv + length(seqs)
-    ###  Es descarten aquells reads de longitud menor a 150
-    seqs <- seqs[ width(seqs) > 150 ]
-
-    ###  Loop sobre els MIDs del pool avaluat
-    for(j in mid.set)
-      # Guarda en una variable la seq inclosa en les posicions indicades.
-      # En aquest cas, busquem el MID entre les posicions 1-40 (start-end), definides 
-      # a l'arxiu de par‡metres. 
-    { sbsq <- subseq(seqs,start=mid.start,end=mid.end)
-      k <- which(mids$MID.ID==j) # Guarda els MIDs que coincideixen amb l'avaluat.
-      pr.up <- mids$MID.Seq[k] # Guarda la seq del MID que ha coincidit. 
-      # Recompte de coincidËncies entre la seq 1-40 extreta i la del MID que ha 
-      # coincidit abans, amb m‡xim 1 diferËncia de mismacth.
-      up.matches <- vcountPattern(pattern=pr.up,subject=sbsq,
-                                max.mismatch=max.middif,fixed=TRUE) 
-      # NomÈs guardem els que tinguin mÈs d'una coincidËncia. 
-      flags <- up.matches>=1
-      if(sum(flags)) # La funciÛ 'sum' assegura que tinguem un valor major a 1.
-        
-        # Guarda en un arxiu fna la seq dels reads que s'han associat al MID
-        # que s'est‡ avaluant, amb nom `pool.n∫MID.fna`, en el directori splits.
-      { KK <- which(nms==paste(pools[i],j,sep="."))[1]
-	    pr.res$Reads[KK] <-  pr.res$Reads[KK]+sum(flags)
-        up.flnm <- paste(pools[i],".MID",j,".fna",
-	                     sep="")
-        writeXStringSet(seqs[flags],file.path(splitDir,up.flnm),
-	                    append=app.flag)
-        seqs <- seqs[!flags]  # Actualitza els reads que no han fet match en aquesta iteraciÛ.					  
-	  }
-    }
-    pool.reads[i] <- p.cv # Sumatori dels reads obtinguts en el pool avaluat.
+  ###  Actualitza el n¬∫ total de reads
+  p.cv <- p.cv + length(seqs)
+  ###  Es descarten aquells reads de longitud menor a 150
+  seqs <- seqs[ width(seqs) > 150 ]
+  
+  ###  Loop sobre els MIDs del pool avaluat
+  for(j in mid.set)
+    # Guarda en una variable la seq inclosa en les posicions indicades.
+    # En aquest cas, es busca el MID entre les posicions 1-40 (start-end), definides 
+    # a l'arxiu de par√†metres. 
+  { sbsq <- subseq(seqs,start=mid.start,end=mid.end)
+  k <- which(mids$MID.ID==j) # Guarda els MIDs que coincideixen amb l'avaluat.
+  pr.up <- mids$MID.Seq[k] # Guarda la seq del MID que ha coincidit. 
+  # Recompte de coincid√®ncies entre la seq 1-40 extreta i la del MID que ha 
+  # coincidit abans, amb m√†xim 1 difer√®ncia de mismacth.
+  up.matches <- vcountPattern(pattern=pr.up,subject=sbsq,
+                              max.mismatch=max.middif,fixed=TRUE) 
+  # Nom√©s guarda els que tinguin m√©s d'una coincid√®ncia. 
+  flags <- up.matches>=1
+  if(sum(flags)) # La funci√≥ 'sum' assegura que tinguem un valor major a 1.
     
-    if(length(seqs)) # En cas que s'hagin iterat tots els MIDs i quedin reads sense assignar:
-      # Guarda un altre arxiu fna amb els reads que no s'han assignat a MID i ho anomena MID0.
-    { mid0.flnm <- paste(pools[i],"MID0.fna",sep=".")
-	  writeXStringSet(seqs,file.path(splitDir,mid0.flnm),
-	                  append=m0.app.flag)
-      m0.app.flag <- TRUE
-	  MID0.reads[i] <- MID0.reads[i]+length(seqs)
-    }
-    app.flag <- TRUE
+    # Guarda en un arxiu .fna la seq dels reads que s'han associat al MID
+    # que s'est√† avaluant, amb nom `pool.n¬∫MID.fna`, en el directori splits.
+  { KK <- which(nms==paste(pools[i],j,sep="."))[1]
+  pr.res$Reads[KK] <-  pr.res$Reads[KK]+sum(flags)
+  up.flnm <- paste(pools[i],".MID",j,".fna",
+                   sep="")
+  writeXStringSet(seqs[flags],file.path(splitDir,up.flnm),
+                  append=app.flag)
+  seqs <- seqs[!flags]  # Actualitza els reads que no han fet match en aquesta iteraci√≥.					  
+  }
+  }
+  pool.reads[i] <- p.cv # Sumatori dels reads obtinguts en el pool avaluat.
+  
+  if(length(seqs)) # En cas que s'hagin iterat tots els MIDs i quedin reads sense assignar:
+    # Guarda un altre arxiu .fna amb els reads que no s'han assignat a MID i ho anomena MID0.
+  { mid0.flnm <- paste(pools[i],"MID0.fna",sep=".")
+  writeXStringSet(seqs,file.path(splitDir,mid0.flnm),
+                  append=m0.app.flag)
+  m0.app.flag <- TRUE
+  MID0.reads[i] <- MID0.reads[i]+length(seqs)
+  }
+  app.flag <- TRUE
   }
   close(strm)
 }
 
-# 
+# Guarda un data frame que inclogui la quantificaci√≥ de reads totals, els que no s'han assignat (MID0)
+# i els que s√≠ s'han assignat
 by.pools <- data.frame(TotReads=pool.reads,NoMID=MID0.reads,
                        MIDReads=tapply(pr.res$Reads,
-					                    factor(pr.res$Pool.Nm,levels=pools),sum))
-
+                                       factor(pr.res$Pool.Nm,levels=pools),sum))
+# Genera el pdf indicar que es guardar√† a la carpeta reports
 pdf.flnm <- file.path(repDir,"SplidByMIDs.barplots.pdf")
 pdf(pdf.flnm,paper="a4",width=5.5,height=10)
 par(mfrow=c(2,1),mar=c(7.5,4,4,2)+0.1)
@@ -146,19 +147,22 @@ par(mfrow=c(2,1),mar=c(7.5,4,4,2)+0.1)
 library(RColorBrewer)
 pal1 <- brewer.pal(8,"Dark2")
 pal2 <- brewer.pal(8,"Pastel2")
-
+# Genera un gr√†fic de barres amb les dades del n¬∫ de reads per MID
 bp <- barplot(pr.res$Reads,col="lavender",border="navy")
 axis(1,at=bp,las=2,rownames(pr.res),cex.axis=0.8)
 title(main="Coverage by Pool and MID",line=1.5)
 
+# Defineix el l√≠mit de l'eix y a partir del m√†xim de reads totals obtinguts
 ymx <- max(data.matrix(by.pools))*1.2
+# Genera un altre gr√†fic de barres amb les dades del n¬∫ de reads per pool (assignats a MID i no assignats)
 bp <- barplot(t(data.matrix(by.pools)),beside=TRUE,ylim=c(0,ymx),
               col=pal2[1:3],border=pal1[1:3])
 legend("top",horiz=TRUE,fill=pal2[1:3],legend=colnames(by.pools),cex=0.8)			  
 title(main="Coverage by Pool",line=1.5)
 
 dev.off()
-
+# Genera un fitxer .txt que es guardar√† a la carpeta reports, on es guadar√† en format taula els resultats
+# representats als gr√†fics
 txt.flnm <- file.path(repDir,"SplidByMIDs.Rprt.txt")
 sink(txt.flnm)
 cat("\nCoverage by Pool and MIDs\n\n")
