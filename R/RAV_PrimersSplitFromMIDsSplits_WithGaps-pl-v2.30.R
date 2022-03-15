@@ -9,12 +9,17 @@ library(ShortRead)
 
 #-----------------------------------------------------------------------#
 
-###  Formatar sencers emplenant amb 0 per l'esquerra
-# Funció per ...
-# 'nchar()' conta el nº de caràcters de l'argument
-# 'substring()' extrau o reemplaça substrings d'un vector de caràcter
+# Funció per assignar a cada haplotip el seu nom en funció del nº de mutacions
+# respecte la seqüència màster (més freqüent) i el seu ordre. El nº d'ordenació
+# en tots els casos serà un número de 4 dígits (per això s'afegeixen 0s a l'esquerra)
 zeroFillInt2Char <- function(x,ln)
-{ x <- paste("000000",x,sep="")
+{ # Concatenació de 0 seguits de l'ordre que presenta l'haplotip dins del conjunt
+  # d'haplotips amb el mateix nº de mutacions amb la màster
+  x <- paste("000000",x,sep="")
+  # 7-4+1. 8-4+1
+  # 'nchar()' recompta el nº de caràcters de la concatenació anterior
+  # En aquest cas ln=4. 'substring()' extrau els caràcters de la concatenació
+  # des de la posició indicada (inclosa) fins al final.
   substring(x,nchar(x)-ln+1)
 }
 
@@ -28,7 +33,7 @@ write.fasta <- function(seqs,flnm)
 # la seq de referència (que pot ser la màster) i de la seva freqüència poblacional, i guarda 
 # les seqüències en un fitxer fasta.
 SaveAllHaplotypes <- function(bseqs,nr,flnm)
-{
+{ # Aquesta variable determina el nom dels fitxers resultants per cada haplotip
   code <- "Hpl"
   ## Determinació de diferències respecte la seqüència màster (amb major freqüència)
   # 'pairwiseAlignment()' realitza un aliniament global de Needleman-Wunsch
@@ -38,39 +43,53 @@ SaveAllHaplotypes <- function(bseqs,nr,flnm)
   # Guarda les vegades que apareix cada nº de mismatches
   tnm <- table(nm)
 
-  # Ordena els indexs de les seqüències per nombre de mutacions respecte la màster
+  # Ordena el nombre de mutacions respecte la màster en ordre ascendent
   o <- order(nm)
-  # Ordena les seqs segons el seu nº de mutacions
+  # Ordena les seqs segons el seu nº de mutacions respecte la màster
   bseqs <- bseqs[o]
   # Ordena també les freqüències segons el nº de mutacions de la seqüència
   nr <- nr[o]
   # Ordena la variable amb el nº de mismatches segons les mutacions (ordre ascendent)
   nm <- nm[o]
 
-  ##  Numero d'ordre dins de cada nombre de mutacions
-  # length(tnm) 
+  ## Assigna el número d'ordre dins de cada nombre de mutacions:
+  # length(tnm) calcula el nº d'agrupacions de la taula tnm, és a dir el nº màxim de mutacions que s'han trobat
+  # 1:tnm[i] s'aplica sobre els valors de 1 fins al total de mutacions trobades. Per cada nº de mutacions, retorna un 
+  # conjunt de nombres que van de l'1 al total de vegades que s'ha donat aquell nº de mutacions 
+  # 'unlist()' concatena tots els valors per tots el nº de mutacions
   isq <- unlist(sapply(1:length(tnm),function(i) 1:tnm[i]))
   
-  ##  Ordenar per frequencia descendent dins de cada nombre de mutacions
+  ## Ordena per freqüència descendent dins de cada nombre de mutacions:
+  # as.integer(names(tnm) retorna els valors de 1 fins al total de mutacions trobades
   for(i in as.integer(names(tnm)))
-  { idx <- which(nm==i)
+  { # Indexs de les seqüències que presenten aquell nº de mutacions (i) respecte la màster
+    idx <- which(nm==i)
+    # Pels valors de freqüència pertanyents a les seqs amb 'i' mutacions, retorna la seva posició
+    # assignada en ordenar-les en ordre descendent
     o <- order(nr[idx],decreasing=TRUE)
+    # Ordena les seqüències amb 'i' mutacions segons freq en ordre descendent
     bseqs[idx] <- bseqs[idx[o]]
+    # Ordena les freqüències de les seqs amb 'i' mutacions en ordre descendent
     nr[idx] <- nr[idx[o]]
   }
 
-  ##  Calcular frequencia relativa
+  ## Calcula la freqüència relativa de cada amplicó pertanyent al MID avaluat
   frq <- round(nr/sum(nr)*100,2)
 
-  ## Nom complet per cada haplotipus
+  ## Nom complet per cada haplotip
+  # Defineix el nom que rebrà cadascun dels haplotips associats al MID avaluat
+  # code està definit al principi (Hpl), nm= mutacions respecte seq màster
+  # 'zeroFillInt2Char' definida al principi, retorna el nº d'ordenació de l'haplotip dins del conjunt
+  # amb el mateix nº de mutacions
+  # Exemple: "Hpl.2.0387" indica que es tracta de l'haplotip nº387 que presenta 2 mutacions
   nms <- paste(code,nm,zeroFillInt2Char(isq,4),sep=".")
 
-  ##  Capçalera fasta amb nom, nombre de reads i freq relativa
+  ## Capçalera del fitxer fasta amb nom de l'haplotip, nombre de reads i freq relativa
   names(bseqs) <- paste(nms,nr,frq,sep="|")
 
-  ##  Salvar a fasta
+  ## Generació del fitxer fasta amb tots els haplotips assignats
   write.fasta(DNAStringSet(bseqs),file.path(trimDir,flnm))
-
+  # Guarda una llista amb les seqüències, les seves freqüències i mutacions respecta la màster (en aquest ordre)
   list(bseqs=bseqs,nr=nr,nm=nm)
 }
 
@@ -141,11 +160,14 @@ for(i in 1:length(pools))
     ### Carrega el fitxer fastq de la carpeta split corresponent al MID de la mostra avaluada
     # Si el fitxer no es troba al directori indicat, executa la següent iteració
     if(! file.exists(file.path(splitDir,flnms[j]))) next 
+    
     # Llegeix el fitxer .fna del MID de la mostra avaluada
 	  seqs <- readDNAStringSet(file.path(splitDir,flnms[j]))
-	  # Suma el nº de reads del fitxer del MID al total del pool al qual correspon
+	  
+	  # Afegeix el nº de reads del fitxer del MID concret al total del pool al qual correspon
 	  p.cv[i] <- p.cv[i] + length(seqs)
-    ### Retorna la posició en la columna Ampl.Nm del primer ID que s'està avaluant
+    
+	  ### Retorna la posició en la columna Ampl.Nm del primer ID que s'està avaluant
 	  # És a dir, de la mostra dins del pool que estem avaluant, indica quin és el seu primer ID i el busca
 	  # al fitxer de primers
     ipr <- grep(samples$Primer.ID[jj],primers$Ampl.Nm)
@@ -158,7 +180,7 @@ for(i in 1:length(pools))
     ### Elimina les seqüències del fitxer del MID avaluat que tinguin longitud menor a 180
 	  seqs <- seqs[width(seqs)>180]
 
-    ###  primer up matches 
+ ### Coincidències cadena forward
     # Guarda la seq del primer FW específic de la regió avaluada
     pr.up <- primers$Primer.FW[ ipr ]
     # Busca la seq del primer FW en la regió 5' (posicions 1-100 definides al fitxer de paràmetres)
@@ -201,7 +223,7 @@ for(i in 1:length(pools))
       # Retalla les seqüències des de la posició on acaba el primer FW fins al final 
       seqs.up <- subseq(seqs.up,start=st,end=width(seqs.up))   
 
-      ### Localitza el primer per l'altre extrem
+      ### Localitza el primer per l'altre extrem --> a la mateixa cadena! 
       # Guarda la reversa complementària del primer RV de la regió avaluada
       pr.p3 <- as.character(
 	             reverseComplement(DNAString(primers$Primer.RV[ipr])))
@@ -236,23 +258,30 @@ for(i in 1:length(pools))
       sqtbl <- sort(table(as.character(seqs.up)),decreasing=TRUE)
       # Guarda les seqüències en una variable
       bseqs <- names(sqtbl)
-      # Els noms d'aquesta variable seran nombre de l'1 al total de seqs disponibles 
+      # Els noms d'aquesta variable seran nombres de l'1 al total de seqs disponibles 
       names(bseqs) <- 1:length(bseqs)
       # Guarda les freqüències ordenades de les seqs
       nr <- as.integer(sqtbl)
       # Aplica la funció del principi sobre les seqüències, les seves freqüències i el fitxer .fna del 
       # pacient al que corresponen aquestes seqs (on es guardaran els resultats)
       lst <- SaveAllHaplotypes(bseqs,nr,up.flnm)
+      # Guarda les freqüències dels haplotips obtinguts
 		  nr <- lst$nr
 		
+		
 		cat("\nForward seqs, table of read lengths (over 10 rd)\n")
-        tbl.len <- tapply(nr,nchar(bseqs),sum)
+      # 'tapply()' en aquest cas calcula el sumatori (sum) de les freqüències (nº reads) segons les diferents
+		  # longituds de seqüència
+		  tbl.len <- tapply(nr,nchar(bseqs),sum)
+		# Filtra les longituds amb més de 10 reads  
 		print(tbl.len[tbl.len>=10])
-		plot(as.integer(names(tbl.len)),tbl.len,type="h",
+		# Gràfic representant les diferents longituds en X i les freqüències (nº reads) en Y
+		plot(as.integer(names(tbl.len)),tbl.len,type="h", # "h" per representar histogrames en forma de línies verticals
 		     xlab="Read length",ylab="# reads")
         title(main=paste(tt," Str FW"))			 
       }
     }
+##################   
 	k <- k+1
 	FlTbl$File.Name[k] <- up.flnm
 	FlTbl$Pat.ID[k] <- samples$Patient.ID[jj]
