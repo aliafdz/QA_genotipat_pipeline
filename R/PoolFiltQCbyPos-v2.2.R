@@ -25,13 +25,13 @@ fn.fastq <- function(flnm,ln) # ln= longitud d'amplicó
     ###  Phred scores. Codi ASCII-33
     # Funció 'quality()' retorna el valor de qualitat dels strings
     # Funció 'as()' permet fer coerció del resultat a matriu
-    phrsc <- as(quality(sqq),"matrix")
-	  
-    # Guarda el valor mínim entre la variable ln i les columnes de la matriu amb les qualitats dels strings 
+    phrsc <- as(quality(sqq),"matrix") # Columnes son posicions i les files els reads
+    
+    # Guarda el valor mínim entre la variable ln i les columnes de la matriu amb les qualitats per posició dels strings 
     nc <- min(ln,ncol(phrsc))
     # De les columnes 1 al mínim assignat abans, aplica els quantils del vector a les columnes
     # de la matriu amb les qualitats phrsc, i ho multiplica pel total de reads
-    # Cada fila es un quantil i cada columna es un cicle de seqüenciació
+    # Cada fila es un quantil i cada columna es un cicle de seqüenciació (posició)
     fnm.q[,1:nc] <- fnm.q[,1:nc] + 
 	               apply(phrsc,2,quantile,p=c(0.05,0.25,0.5,0.75,0.95),
 	                     na.rm=TRUE)[,1:nc] * nrds[nchk]
@@ -43,7 +43,7 @@ fn.fastq <- function(flnm,ln) # ln= longitud d'amplicó
     # i guarda els resultats multiplicats per la longitud de la seq
     fnm.l <- fnm.l + quantile(sqln,p=c(0.05,0.25,0.5,0.75,0.95),
 	                     na.rm=TRUE) * nrds[nchk]
-  }
+  print(fnm.l)}
   close(strm)
   # Retorna una llista amb 3 matrius:
   # 1- Fracció dels quantils de phred score entre total de reads
