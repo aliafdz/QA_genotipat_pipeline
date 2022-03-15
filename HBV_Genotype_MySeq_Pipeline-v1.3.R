@@ -12,7 +12,8 @@ source("HBV_nt_gaps_pars.R")
 if(!exists("elementLengths"))
   if(exists("elementNROWS"))
     { elementLengths <- function(x)
-	    return(elementNROWS(x))
+	    return(elementNROWS(x)) # -> Retorna el vector que conté el nombre
+                              # de coincidències per cada patró cercat
 	}
 
 tm <- integer(10)

@@ -1,4 +1,4 @@
-
+ï»¿
 ############################################################
 ###  PARAMETRES DEL PIPE-LINE DE InDels i Genotypat de HBV
 ############################################################
@@ -29,30 +29,30 @@ tmp.Dir <- "./tmp"
 
 #-----------------------------------------------------------------------#
 
-###  Posició esperada del MID (general, adaptador 454 o no)
+###  PosiciÃ³ esperada del MID (general, adaptador 454 o no)
 mid.start <- 1
 mid.end <- 40
 
 #-----------------------------------------------------------------------#
 
 ##  TRIM PRIMERS
-## Definim parametres per separació de reads:
-pmm.mx <- 3        ## Nombre màxim de mismatch en el primer específic
+## Definim parametres per separaciÃ³ de reads:
+pmm.mx <- 3        ## Nombre mÃ xim de mismatch en el primer especÃ­fic
 max.prdif <- pmm.mx
-min.len <- 200     ## Longitud mínima per considerar una seqüència
-###  Depèn que hi hagi adaptadors 454, MIDs i/o M13
+min.len <- 200     ## Longitud mÃ­nima per considerar una seqÃ¼Ã¨ncia
+###  DepÃ¨n que hi hagi adaptadors 454, MIDs i/o M13
 target.io <- 1     #  1   10   25   50
 target.in <- 100   # 30   55   55   80
 
 #-----------------------------------------------------------------------#
 
-## Definim paràmetres per la intersecció d'haplotips
+## Definim parÃ metres per la intersecciÃ³ d'haplotips
 
-## Mínima longitud per entrar en la intersecció
+## MÃ­nima longitud per entrar en la intersecciÃ³
 min.seq.len <- 150
-###  Si cal filtrat per mínim nombre de reads en la lectura del fasta
+###  Si cal filtrat per mÃ­nim nombre de reads en la lectura del fasta
 min.rd <-   1      
-###  Min d'abundancia per entrar en l'aliniament múltiple (%)
+###  Min d'abundancia per entrar en l'aliniament mÃºltiple (%)
 a.cut  <- 0.2
 
 #-----------------------------------------------------------------------#
