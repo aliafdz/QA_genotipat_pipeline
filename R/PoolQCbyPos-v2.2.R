@@ -3,7 +3,7 @@ library(ShortRead)
 library(Biostrings)
 library(stringr)
 
-# Funció que es cridarà després 
+# Funció que es cridarà després sobre les dades abans i després de flash
 fn.fastq <- function(flnm,ln=301) # ln és 301 per defecte, però en realitat és la longitud de l'amplicó
 { # Defineix una matriu de dimensions 5xln de 0s
   fnm.q <- matrix(0,nrow=5,ncol=ln)
@@ -14,7 +14,7 @@ fn.fastq <- function(flnm,ln=301) # ln és 301 per defecte, però en realitat é
   # Variable de nombre enter
   all.ln <- integer()
   
-  ### Aplica streamer (iteració) en el fitxer fastq
+  ### Aplica streamer (iteració) en el fitxer fastq. Cada iteració serà de la mida de la variable chunck.sz
   strm <- FastqStreamer(flnm,n=chunck.sz) # chunck.sz definit en el fitxer principal
   ### Carrega el fitxer fastq per chuncks
   nchk <- 0
@@ -23,32 +23,32 @@ fn.fastq <- function(flnm,ln=301) # ln és 301 per defecte, però en realitat é
     nrds[nchk] <- length(sqq) # Guarda el nº de reads del chunck avaluat
 	
     ###  Phred scores. Codi ASCII-33
-    # Funció 'quality()' retorna el valor de qualitat dels strings
+    # Funció 'quality()' retorna el valor de qualitat per posició dels reads
     # Funció 'as()' permet fer coerció del resultat a matriu
     phrsc <- as(quality(sqq),"matrix")
   
     # Guarda el valor mínim entre la variable ln i les columnes de la matriu amb les qualitats dels strings  
 	  nc <- min(ln,ncol(phrsc))
 	  # De les columnes 1 al mínim assignat abans, aplica els quantils del vector a les columnes
-	  # de la matriu amb les qualitats phrsc, i ho multiplica pel total de reads
-	  # Cada fila es un quantil i cada columna es un cicle de seqüenciació 
+	  # de la matriu amb les qualitats phrsc, i ho multiplica pel total de reads (normalització per chuncks)
+	  # Cada fila es un quantil i cada columna es un cicle de seqüenciació (posició del read)
     fnm.q[,1:nc] <- fnm.q[,1:nc] + 
 	               apply(phrsc,2,quantile,p=c(0.05,0.25,0.5,0.75,0.95),
 	                     na.rm=TRUE)[,1:nc] * nrds[nchk]
     
     ###  Longituds de seqüència
-    sqln <- width(sqq) # Cicles de seqüenciació 
-    all.ln <- c(all.ln,sqln) # Vector amb el nº de cicles com a nombres enters
+    sqln <- width(sqq) # Cicles de seqüenciació (longitud)
+    all.ln <- c(all.ln,sqln) # Vector amb el nº de cicles com a nombres enters. S'afegiran els nous valors amb cada iteració
     # Aplica els quantils per guardar-los en la llista de 5 columnes de 0 (1 columna per quantil)
-    # i guarda els resultats multiplicats per la longitud de la seq
+    # i guarda els resultats multiplicats per la longitud de la seq (normalització)
     fnm.l <- fnm.l + quantile(sqln,p=c(0.05,0.25,0.5,0.75,0.95),
 	                     na.rm=TRUE) * nrds[nchk]
   }
   close(strm)
   # Retorna una llista amb 3 matrius:
-  # 1- Fracció dels quantils de phred score entre total de reads
-  # 2- Nº de reads de cada quantil entre total de reads
-  # 3- Nº de cicles de seqüenciació
+  # 1- Quantils de phred score per posició entre total de reads
+  # 2- Quantils aplicats a la longitud dels reads entre el total
+  # 3- Nº de cicles de seqüenciació (longitud dels reads)
   return(list(fvnq=fnm.q/sum(nrds),fvnl=fnm.l/sum(nrds),all.ln=all.ln))
 }  
 
@@ -170,7 +170,7 @@ for(i in 1:length(snms))
   # Aplica la funció del principi sobre els fitxers R1 i R2 del pool
   # Això és pel gràfic d'abans de flash, avalua la qualitat dels reads inicials
   lst1 <- fn.fastq(file.path(runDir,R1.flnms[i]))
-  # Guarda la taula amb fracció dels quantils de phred score entre total de reads
+  # Guarda la taula amb quantils de phred score per posició entre total de reads
   fvnm1 <- lst1$fvnq
   # Aplica la funció de nou sobre R2
   lst2 <- fn.fastq(file.path(runDir,R2.flnms[i]))
@@ -181,7 +181,7 @@ for(i in 1:length(snms))
   
   # Aplica la primera funció sobre els fastq resultants de flash
   lst <- fn.fastq(file.path(flashDir,flnms[i]),pln[i]) # pln per guardar com argument ln la longitud de l'amplicó!
-  # Matriu amb fracció dels quantils de phred score entre total de reads
+  # Matriu amb quantils de phred score per posició entre total de reads
   fvnm <- lst$fvnq
   # Genera el gràfic de la 3a funció definida
   plot.flash(fvnm)
@@ -207,21 +207,28 @@ for(i in 1:length(snms))
   plot.flash(fvnm)
   
   # Gràfic de la longitud dels reads abans i després de flash
-  par(mfrow=c(1,2))  
+  par(mfrow=c(1,2))
+  # Guarda la llista dels quantils de longitud entre el total de reads per R1,R2 i flash
   stats=cbind(lst1$fvnl,lst2$fvnl,lst$fvnl)
   colnames(stats) <- c("R1","R2","Flash")
+  # 'bxp()' serveix per realitzar boxplots basats en sumatoris
   bxp.dt <- list(stats=stats,names=colnames(stats))
   bxp(bxp.dt,pars=list(boxfilll="lavender"),border="navy",
       ylab="Read length",las=2,ylim=c(0,max(stats)))
   title(main="Read length distributions")
   
-  # Gràfic de longitud de reads del flash
-  lnfrq <- table(lst$all.ln) # taula del nº de cicles
+  # Gràfic de longitud de reads després de flash
+  # Guarda la longitud dels reads i la seva freqüència (calculada amb 'table()')
+  lnfrq <- table(lst$all.ln) 
+  # Guarda les longituds
   x <- as.integer(names(lnfrq))
+  # Guarda les freqüències
   y <- as.vector(lnfrq)
+  # Gràfic de tipus histograma amb línies verticals
   plot(x,y,type="h",xlab="Read length",ylab="Frequency")
   title(main="Read lengths (Flash reads)")
   par(new=T)
+  # Càlcul de la línia de freqüència acumulada per representar-la al gràfic
   plot(x,cumsum(y/sum(y)),type="l",ylim=c(0,1),
        axes=F,xlab=NA,ylab=NA,col="blue")
   axis(side=4,col="blue",col.axis="blue",at=seq(0,1,0.1),las=2)

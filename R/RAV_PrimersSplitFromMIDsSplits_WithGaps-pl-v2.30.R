@@ -9,17 +9,17 @@ library(ShortRead)
 
 #-----------------------------------------------------------------------#
 
-# Funció per assignar a cada haplotip el seu nom en funció del nº de mutacions
+# Funció per assignar a cada haplotip el seu nom en funció del nº de mutacions que presenta
 # respecte la seqüència màster (més freqüent) i el seu ordre. El nº d'ordenació
 # en tots els casos serà un número de 4 dígits (per això s'afegeixen 0s a l'esquerra)
 zeroFillInt2Char <- function(x,ln)
 { # Concatenació de 0 seguits de l'ordre que presenta l'haplotip dins del conjunt
   # d'haplotips amb el mateix nº de mutacions amb la màster
   x <- paste("000000",x,sep="")
-  # 7-4+1. 8-4+1
   # 'nchar()' recompta el nº de caràcters de la concatenació anterior
   # En aquest cas ln=4. 'substring()' extrau els caràcters de la concatenació
-  # des de la posició indicada (inclosa) fins al final.
+  # des de la posició indicada (inclosa) fins al final. Així assegura l'addició de 0s
+  # fins que el nombre total tingui 4 dígits
   substring(x,nchar(x)-ln+1)
 }
 
@@ -121,7 +121,7 @@ pr.res <- matrix(0,nrow=Ns,ncol=4)
 # Asigna el nom a les columnes de la matriu on s'aniran afegint els resultats
 colnames(pr.res) <-  c("Tot.reads","matches","shorts","fn.reads")
 
-# Genera un data frame amb el doble de files que el total de mostres i 9 columnes amb els noms indicats 
+# Genera un data frame amb el doble de files que el total de mostres i 9 columnes amb els noms dels arguments 
 # 'character()' aplicat sobre un nombre enter retorna tants caràcters buits com el nº indiqui
 # 'integer()' sobre un nombre enter retorna tants 0s com el nº indiqui
 FlTbl <- data.frame(File.Name=character(Ns),Pat.ID=character(Ns),
@@ -164,7 +164,7 @@ for(i in 1:length(pools))
     # Llegeix el fitxer .fna del MID de la mostra avaluada
 	  seqs <- readDNAStringSet(file.path(splitDir,flnms[j]))
 	  
-	  # Afegeix el nº de reads del fitxer del MID concret al total del pool al qual correspon
+	  # Afegeix el total de reads del fitxer del MID concret al total del pool al qual correspon
 	  p.cv[i] <- p.cv[i] + length(seqs)
     
 	  ### Retorna la posició en la columna Ampl.Nm del primer ID que s'està avaluant
@@ -199,15 +199,15 @@ for(i in 1:length(pools))
     # Variable buida de nombre enter
     shorts <- integer()
 	  trim.len <- 0
-	  # Genera un fitxer .fna el nom del qual està format pel ID del pacient, la regió (amplicó) avaluada,
+	  # Genera un fitxer .fna, el nom del qual està format per l'ID del pacient, la regió (amplicó) avaluada,
 	  # i la consecució PrFW.fna (primer forward)
     up.flnm <- paste(samples$Patient.ID[jj],primers$Ampl.Nm[ipr],"PrFW.fna",
 	                 sep=".")
 	  
-    seqs.up <- ""
+    seqs.up <- "" # Coincidències cadena FW
     if(sum(flags)) # Sumatori de seqüències amb 1 o més coincidències amb la seq del primer
     { # 'startIndex()' retorna una llista amb les posicions inicials de les coincidències del patró cercat
-      # Cal tenir cura ja que si no hi ha coincidencia la llista guarda un valor NULL
+      # Cal tenir cura, ja que si no hi ha coincidència la llista guarda un valor NULL
       # Aplicar el condicional flags sobre la llista de posicions inicials permet eliminar els valors NULL
       # Guarda en una variable tots els valors de posició inicial del primer FW sobre les seqüències
       pos <- sapply(startIndex(up.matches)[flags],function(x) x[[1]])+delta
@@ -227,11 +227,13 @@ for(i in 1:length(pools))
       # Guarda la reversa complementària del primer RV de la regió avaluada
       pr.p3 <- as.character(
 	             reverseComplement(DNAString(primers$Primer.RV[ipr])))
-      # Calcula la longitud de les seqüències que tenien coincidència amb el primer FW
+      # Calcula la longitud de les seqüències que tenien coincidència amb el primer FW després de retallar-lo
+        # Seria equivalent a dir que es calcula la posició final del primer RV (parlant en sentit 5'-3')
       endp <- width(seqs.up)
       # Resta a la longitud de les seqs la posició final on hem de buscar el primer
+        # Com estem parlant del primer RV, que es troba a 3', l'haurem de buscar en les 100 últimes posicions
       fstp <- endp-target.in
-      # Calcula la diferència entre la nova posició final i la posició inicial
+      # Calcula la diferència entre la posició on comença el primer RV i la posició inicial de la seqüència
       delta <- fstp-1
       # Busca la seq del primer RV en la regió 3' (100 últimes posicions) de les seqüències on
       # ja s'ha retallat el primer FW. max.prdif defineix el màxim de mismatches permesos
@@ -253,14 +255,16 @@ for(i in 1:length(pools))
 	    # Retalla les seqs des de la posició 1 fins on es detecta el primer RV
 		  seqs.up <- subseq(seqs.up,start=1,end=pos-1)           
 		
-	    ### Colapsa les seqüències en haplotips + freqüències
-		  # Ordena en ordre descendent les seqüències en funció de la seva freqüència (calculada amb 'table()')
+	    ### Colapsa les seqüències 'up' en haplotips + freqüències
+		  # Ordena en ordre descendent les freqüències (calculada amb 'table()') de cada haplotip
+		    # Les seqüències retallades es transformen en caràcters, i a l'aplicar la funció 'table()', es comparen
+		    # entre elles, per tant totes les seqs idèntiques s'agrupen juntes. El nº de seqs idèntiques defineix la freq
       sqtbl <- sort(table(as.character(seqs.up)),decreasing=TRUE)
       # Guarda les seqüències en una variable
       bseqs <- names(sqtbl)
       # Els noms d'aquesta variable seran nombres de l'1 al total de seqs disponibles 
       names(bseqs) <- 1:length(bseqs)
-      # Guarda les freqüències ordenades de les seqs
+      # Guarda les freqüències dels haplotips (com a nombres enters) ordenades de les seqs
       nr <- as.integer(sqtbl)
       # Aplica la funció del principi sobre les seqüències, les seves freqüències i el fitxer .fna del 
       # pacient al que corresponen aquestes seqs (on es guardaran els resultats)
@@ -270,10 +274,10 @@ for(i in 1:length(pools))
 		
 		
 		cat("\nForward seqs, table of read lengths (over 10 rd)\n")
-      # 'tapply()' en aquest cas calcula el sumatori (sum) de les freqüències (nº reads) segons les diferents
-		  # longituds de seqüència
-		  tbl.len <- tapply(nr,nchar(bseqs),sum)
-		# Filtra les longituds amb més de 10 reads  
+    # 'tapply()' en aquest cas calcula el sumatori (sum) de les freqüències (nº reads) segons les diferents
+		# longituds de seqüència
+		tbl.len <- tapply(nr,nchar(bseqs),sum)
+		# Filtra les longituds amb més de 10 reads (per això el títol amb la funció 'cat()') 
 		print(tbl.len[tbl.len>=10])
 		# Gràfic representant les diferents longituds en X i les freqüències (nº reads) en Y
 		plot(as.integer(names(tbl.len)),tbl.len,type="h", # "h" per representar histogrames en forma de línies verticals
@@ -281,69 +285,112 @@ for(i in 1:length(pools))
         title(main=paste(tt," Str FW"))			 
       }
     }
-##################   
-	k <- k+1
-	FlTbl$File.Name[k] <- up.flnm
-	FlTbl$Pat.ID[k] <- samples$Patient.ID[jj]
-	FlTbl$Ampl.Nm[k] <- primers$Ampl.Nm[ipr]
-	FlTbl$Pr.ID[k] <- ipr
-	FlTbl$Str[k] <- "fw"
-	FlTbl$Pos[k] <- primers$FW.tpos[ipr]
-	FlTbl$Len[k] <- mean(width(seqs.up))
+    # Actualitza k per indicar l'index a la taula de reports: per cada mostra (2 per pacient) hi haurà 2 resultats
+    # corresponents a les cadenes forward i reverse
+  	k <- k+1
+  	# Nom del fitxer (pacient, regió, PrFw)
+  	FlTbl$File.Name[k] <- up.flnm
+  	# Identificació del pacient
+  	FlTbl$Pat.ID[k] <- samples$Patient.ID[jj]
+  	# Coordenades de la egió amplificada (5'X o preS1)
+  	FlTbl$Ampl.Nm[k] <- primers$Ampl.Nm[ipr]
+  	# Identificador del primer (1 o 2) segons la regió que amplifica
+  	FlTbl$Pr.ID[k] <- ipr
+  	# Cadena (en aquest cas forward)
+  	FlTbl$Str[k] <- "fw"
+  	# Posició del genoma de HBV en la que comença l'amplicó (després d'eliminar els primers)
+  	FlTbl$Pos[k] <- primers$FW.tpos[ipr]
+  	# Mitjana de longitud de le seqüències després de retallar-les
+  	FlTbl$Len[k] <- mean(width(seqs.up))
+  	# Sumatori del total de reads en el MID avaluat (mostra) que s'han assignat
     FlTbl$Reads[k] <- sum(nr)				   
+    # Total d'haplotips detectats
     FlTbl$Hpls[k] <- length(nr)				   
-
-	p.ok[i] <- p.ok[i] + sum(nr)
-
-	pr.res[k,1] <- length(seqs)
+    
+    # Afegeix el nº de reads (del MID concret) idenficiats amb la cadena FW al total del pool al qual correspon
+  	p.ok[i] <- p.ok[i] + sum(nr)
+    
+  	# A l'altra taula de reports afegeix, per la iteració i cadena avaluada:
+  	# Total de reads presents al fitxer del MID avaluat
+  	pr.res[k,1] <- length(seqs)
+  	# Reads que s'han pogut associar a la cadena FW
     pr.res[k,2] <- sum(flags)
+    ## FALTA
     pr.res[k,3] <- sum(shorts)
+    # Sumatori del total de reads en el MID avaluat (mostra) que s'han assignat
     pr.res[k,4] <- sum(nr)
   
-    ###  primer dn matches 
-    #################################
+ ### Coincidències cadena reverse
+    # Cal tenir en compte que la variable seqs ara està actualitzada amb les no assignades a cadena FW!
+    # Guarda la seq del primer RV específic de la regió avaluada
     pr.dn <- primers$Primer.RV[ ipr ]
+    # Busca la seq del primer RV en la regió 5' (posicions 1-100 definides al fitxer de paràmetres)
+    # de les seqüències del fitxer .fna del MID avaluat. max.prdif defineix el màxim de mismatches permesos
+    # Guarda totes les coincidències amb les posicions inicial, final, i longitud
     dn.matches <- vmatchPattern(pattern=pr.dn,
                             subject=subseq(seqs,start=target.io,end=target.in),
                             max.mismatch=max.prdif,fixed=FALSE)
+    # Resta 1 a la posició inicial de cerca del primer (per defecte, 1)
     delta <- target.io-1
+    # Aplica la funció que està definida al fitxer principal
+    # Indica quines seqüències han trobat 1 o més coincidències amb la seq del primer RV 
     flags <- elementLengths(dn.matches)>=1
+    # Torna a buidar aquestes variables per guardar les noves dades
     nr <- integer()
     shorts <- integer()
-	
+    # Genera un fitxer .fna, el nom del qual està format per l'ID del pacient, la regió (amplicó) avaluada,
+    # i la consecució PrRV.fna (primer reverse)
     dn.flnm <- paste(samples$Patient.ID[jj],primers$Ampl.Nm[ipr],"PrRV.fna",
 	                 sep=".")
-	seqs.dn <- ""
-    if(sum(flags))
-    { ###  Matches
+    
+	  seqs.dn <- "" # Coincidències cadena RV
+    if(sum(flags)) # Sumatori de seqüències amb 1 o més coincidències amb la seq del primer
+    { # 'startIndex()' retorna una llista amb les posicions inicials de les coincidències del patró cercat
+      # Cal tenir cura, ja que si no hi ha coincidència la llista guarda un valor NULL
+      # Aplicar el condicional flags sobre la llista de posicions inicials permet eliminar els valors NULL
+      # Guarda en una variable tots els valors de posició inicial del primer RV sobre les seqüències
+      pos <- sapply(startIndex(dn.matches)[flags],function(x) x[[1]])+delta
+      
+      ### Guarda les seqs amb coincidències del primer RV      
       seqs.dn <- seqs[flags]
-	  ###  Update remaining seqs
-	  seqs <- seqs[!flags]
-	  ###  Trim primer
-	  pos <- sapply(startIndex(dn.matches)[flags],function(x) x[[1]])+delta
-      st <- pos + (primers$RV.pos[ipr]-primers$RV.tpos[ipr])   ###
-      seqs.dn <- subseq(seqs.dn,start=st,end=width(seqs.dn))   ###
-	  seqs.dn <- seqs.dn[width(seqs.dn)>target.in+5]
+      ### Actualitza el nº de seqs amb les que no presentaven coincidències
+      seqs <- seqs[!flags]
+      
+      ### Retalla el primer RV de la regió 5' 
+      # Suma a la posició inicial del primer RV en la seq la seva longitud
+      st <- pos + (primers$RV.pos[ipr]-primers$RV.tpos[ipr])
+      # Retalla les seqüències des de la posició on acaba el primer RV fins al final 
+      seqs.dn <- subseq(seqs.dn,start=st,end=width(seqs.dn))  
+  	  # Guarda només les seqüències amb longitud major a 105 (la posició final on busquem el primer +5)
+      seqs.dn <- seqs.dn[width(seqs.dn)>target.in+5]
 	  
-      ###  Reverse complement down matches
+      ### Actualitza les seqüències de cadena RV fent la seva reversa complementària
+        # Important perquè ara les tenim en sentit 3'-5' per poder associar-les a les seves cadenes up!
       seqs.dn <- reverseComplement(seqs.dn)
-      ###  ... and match up primer
+      ### Busca ara el primer FW original a la regió inicial (5')
+      # Calcula el màxim entre 5 posicions abans de la inicial de cerca del primer (per defecte 1) i 1 
       io <- max(target.io-5,1)
+      # Calcula la diferència entre aquesta posició i la posició inicial de la seqüència
       delta <- io-1
+      # Busca la seq del primer FW en la regió 5' (100 primeres posicions) de les seqüències on
+      # ja s'ha retallat el primer RV max.prdif defineix el màxim de mismatches permesos
+      # Guarda totes les coincidències amb les posicions inicial, final, i longitud
       dn.matches <- vmatchPattern(pattern=pr.up,
-                              subject=subseq(seqs.dn,start=io,end=target.in+5),
-                              max.mismatch=max.prdif,fixed=FALSE)
+                        subject=subseq(seqs.dn,start=io,end=target.in+5),
+                        max.mismatch=max.prdif,fixed=FALSE)
+      
+      # Indica quines seqüències han trobat 1 o més coincidències amb la seq del primer RV
       flags <- elementLengths(dn.matches)>=1
 
-      ###  Els que passen aquí tenen l'amplicó sencer
+  ###    ###  Els que passen aquí tenen l'amplicó sencer
       if(sum(flags))
-	  { ###  Trim reversed dn seqs
+	    { ###  Trim reversed dn seqs
         seqs.dn <- seqs.dn[flags]
         pos <- sapply(startIndex(dn.matches)[flags],function(x) x[[1]])+delta
         st <- pos + (primers$FW.tpos[ipr]-primers$FW.pos[ipr])   ###
         seqs.dn <- subseq(seqs.dn,start=st,end=width(seqs.dn))   ###
 		
-		###  Collapse sequences to haplotypes+frequencies
+###  Collapse sequences to haplotypes+frequencies
         sqtbl <- sort(table(as.character(seqs.dn)),decreasing=TRUE)
         bseqs <- names(sqtbl)                
         names(bseqs) <- 1:length(bseqs)
