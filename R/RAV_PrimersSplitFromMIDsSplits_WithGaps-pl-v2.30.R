@@ -87,7 +87,7 @@ SaveAllHaplotypes <- function(bseqs,nr,flnm)
   ## Capçalera del fitxer fasta amb nom de l'haplotip, nombre de reads i freq relativa
   names(bseqs) <- paste(nms,nr,frq,sep="|")
 
-  ## Generació del fitxer fasta amb tots els haplotips assignats
+  ## Generació del fitxer fasta amb tots els haplotips assignats a la carpeta trim
   write.fasta(DNAStringSet(bseqs),file.path(trimDir,flnm))
   # Guarda una llista amb les seqüències, les seves freqüències i mutacions respecta la màster (en aquest ordre)
   list(bseqs=bseqs,nr=nr,nm=nm)
@@ -149,7 +149,7 @@ k <- 0
 for(i in 1:length(pools))
 { # Identifica les mostres que corresponen al pool avaluat
   idx <- which(samples$Pool.Nm==pools[i])
-  # Genera el nom dels fitxers .fna per cadascun dels MIDS que corresponen a les mostres indicades
+  # Guarda el nom dels fitxers .fna dels MIDS corresponents a les mostres indicades, dels quals parteix
   flnms <- paste(pools[i],".MID",samples$MID[idx],".fna",sep="")
   
   ### Loop sobre les mostres del pool avaluat -> cadascuna amb un MID concret
@@ -200,7 +200,7 @@ for(i in 1:length(pools))
     shorts <- integer()
 	  trim.len <- 0
 	  # Genera un fitxer .fna, el nom del qual està format per l'ID del pacient, la regió (amplicó) avaluada,
-	  # i la consecució PrFW.fna (primer forward)
+	  # i la consecució PrFW.fna (primer forward), que es guarda a la carpeta trim
     up.flnm <- paste(samples$Patient.ID[jj],primers$Ampl.Nm[ipr],"PrFW.fna",
 	                 sep=".")
 	  
@@ -307,15 +307,15 @@ for(i in 1:length(pools))
     # Total d'haplotips detectats
     FlTbl$Hpls[k] <- length(nr)				   
     
-    # Afegeix el nº de reads (del MID concret) idenficiats amb la cadena FW al total del pool al qual correspon
+    # Afegeix el nº de reads (del MID concret) idenficats amb la cadena FW al total del pool al qual correspon
   	p.ok[i] <- p.ok[i] + sum(nr)
     
   	# A l'altra taula de reports afegeix, per la iteració i cadena avaluada:
-  	# Total de reads presents al fitxer del MID avaluat
+  ### En aquest punt aquesta variable correspon als reads que no s'han assignat a la cadena FW!!
   	pr.res[k,1] <- length(seqs)
   	# Reads que s'han pogut associar a la cadena FW
     pr.res[k,2] <- sum(flags)
-    ## FALTA
+    # La variable shorts és 0 osigui que el sumatori també ho és
     pr.res[k,3] <- sum(shorts)
     # Sumatori del total de reads en el MID avaluat (mostra) que s'han assignat
     pr.res[k,4] <- sum(nr)
@@ -437,15 +437,14 @@ for(i in 1:length(pools))
   	FlTbl$Pr.ID[k] <- ipr
   	FlTbl$Str[k] <- "rv"
   	FlTbl$Pos[k] <- primers$FW.tpos[ipr]
-  	
   	# Hauria de ser la longitud de les seqüències després de retallar-les però la variable és 0??
   	FlTbl$Len[k] <- trim.len ### 
     FlTbl$Reads[k] <- sum(nr)				   
     FlTbl$Hpls[k] <- length(nr)				   
     
-    # Afegeix el nº de reads (del MID concret) idenficiats amb la cadena FW al total del pool al qual correspon	  
+    # Afegeix el nº de reads (del MID concret) idenficats amb la cadena FW al total del pool al qual correspon	  
   	p.ok[i] <- p.ok[i] + sum(nr)
-  	# Guarda tots els resultats igual que en el cas de les cadenes up (forward) a l'altra taula
+  	# Guarda tots els resultats igual que en el cas de les cadenes up (forward) a l'altra taula (nº de reads per pas)
   	pr.res[k,1] <- length(seqs)
     pr.res[k,2] <- sum(flags)
     pr.res[k,3] <- sum(shorts)
@@ -456,50 +455,77 @@ for(i in 1:length(pools))
 sink()
 dev.off()
 
-###  Sincronitzar structures
+### Sincronització d'estructures
+# Guarda la columna de la taula de resultats amb els identificadors dels primers majors a 0 
+# (en aquest cas els IDs son 1 o 2, per tant es guarden tots)
 fl <- FlTbl$Pr.ID>0
+# Guarda totes les entrades de la taula que compleixin la condició anterior (en aquest cas totes)
 FlTbl <- FlTbl[fl,]
+# Guarda també les entrades de la taula amb els nº de reads que compleixen la primera condició
 pr.res <- pr.res[fl,]
+# Guarda tots els identificadors dels pacients concatenas amb la regió del HBV avaluada
 anms <- paste(FlTbl$Pat.ID,FlTbl$Ampl.Nm,sep=".")
-
+# Assigna a la taula de mostres (variable samples) els noms de les files, que corresponen de nou als
+# identificadors dels pacients amb la regió avaluada (tot i que en aquest cas extrau les dades de la taula de mostres)
 rownames(samples) <- paste(samples$Patient.ID,samples$Primer.ID,sep=".")
 
-###  Plot results
+### Gràfics de resultats
 library(RColorBrewer)
+# Generació de les paletes de colors
 pal1 <- brewer.pal(8,"Dark2")
 pal2 <- brewer.pal(8,"Pastel2")
 
+# Guarda en dues variables diferents les entrades de la taula de resultats corresponents a les cadenes forward i reverse
 fw.idx <- which(FlTbl$Str=="fw")
 rv.idx <- which(FlTbl$Str=="rv")
+# Genera un data frame amb dades de les dues taules de resultats que inclou, només per les cadenes forward:
+# ID dels pacients, regió amplificada, total de reads de la mostra, dades de la variable shorts (no s'ha definit, és 0),
+# reads associats a cadascuna de les dues cadenes (per separat) i sumatori del total de reads en el MID avaluat (mostra) que s'han assignat
 mprres <- data.frame(PatID=FlTbl$Pat.ID[fw.idx],
                      PrimerID=FlTbl$Ampl.Nm[fw.idx],
-                     Treads=pr.res[fw.idx,1],
+                     Treads=pr.res[fw.idx,1], ### Revisar aquesta variable
 					 Shorts=pr.res[fw.idx,3]+pr.res[rv.idx,3],
                      FW.match=pr.res[fw.idx,4],
                      RV.match=pr.res[rv.idx,4],
 					 Fn.reads=pr.res[fw.idx,4]+pr.res[rv.idx,4],
                      stringsAsFactors=FALSE)
+# Canvia el nom de la variable(? No sé si és necessari
 mres <- mprres
+# Calcula el sumatori dels reads assignats a cadena forward o reverse en funció dels pacients, és a dir,
+# suma els reads assignats per a les dues regions del HBV avaluades
+# 'tapply()' calcula el sumatori (sum) del nº reads segons els pacients
 T.reads <- apply(mres[,5:6],2, function(x)
               tapply(x,mres$PatID,sum))
+
+# Aquest condicional només s'aplica si a la taula només hi ha un sol pacient
 if(length(unique(mres$PatID))==1)
-{ x <- matrix(T.reads,nrow=1)
+{ # En aquest cas, es genera una matriu d'una sola fila amb els valors de reads assignats a les dues cadenes,
+  # indicant el pacient i les columnes de la taula T.reads
+  x <- matrix(T.reads,nrow=1)
   rownames(x) <- mres$PatID[1]
   colnames(x) <- names(T.reads)
   T.reads <- x
 }  
-  
+
+# Genera el fitxer .pdf que es guardarà a la carpeta reports, indicant el nom del projecte definit al fitxer global
 pdf.flnm <- paste(proj.nm,"SplitByPrimersOnFlash.pdf",sep="_")
 pdf(file.path(repDir,pdf.flnm),paper="a4",width=6,height=11)
 par(mfrow=c(2,1),mar=c(7,4,4,2)+0.1)
 
+# Defineix el límit de l'eix Y del gràfic a partir del sumatori de reads assignats per pacient (no segons el pool)
 ymx <- max(rowSums(T.reads))*1.2
+# Gràfic de barres amb la trasposada de la taula T.reads, per representar els reads assignats a la cadena forward 
+# i reverse per cada pacient, independentment de la regió del HBV avaluada
+# En aquest gràfic es representa una única barra per pacient i d'indica amb colors diferents les assignacions up i down
 barplot(t(T.reads),col=pal2[1:2],las=2,ylim=c(0,ymx))
 legend("top",horiz=TRUE,fill=pal2[1:2],legend=c("up","dn"))
 title(main="Primer matches by patient (# reads)")
 
+# Genera un altre gràfic amb les mateixes dades, però aquest cop es representen dues barres per pacient, una per
+# cada cadena forward o reverse, i diferenciant les dues regions del HBV avaluades
 res.mat <- mres[,5:6]
 ymx <- max(res.mat)*1.2
+# També es defineixen els noms de l'eix X com el ID dels pacients i la regió HBV avaluada
 nms <- paste(mres$PatID,mres$PrimerID)
 bp <- barplot(t(res.mat),beside=TRUE,border=pal1[1:2],col=pal2[1:2],
               ylim=c(0,ymx),xaxt="n")
@@ -509,31 +535,41 @@ title(main="Primer matches (# reads)")
 legend("top",horiz=TRUE,fill=pal2[1:2],legend=c("up","dn"))
 dev.off()
 
+# Calcula el rendiment d'aquest pas, dividint els reads que s'han pogut assignar a alguna de les cadenes 
+# entre el total de reads de cada pool o regió (sumatori de tots els MIDS de cada pool)
 yield <- p.ok/p.cv*100
+# Guarda un data frame amb 3 columnes indicant el total de reads assignats a algun MID, el total de reads assignats
+# als primers (cadenes forward o reverse) i el rendiment calculat, tot això per cada regió avaluada
 PoolTbl <- data.frame(MIDReads=p.cv,PrimerReads=p.ok,Pct=yield)
 
+# Genera el fitxer .txt que es guardarà a la carpeta reports, indicant el nom del projecte
 txt.flnm <- paste(proj.nm,"SplitByPrimersOnFlash.txt",sep="_")
 sink(file.path(repDir,txt.flnm))
+# Afegeix la taula on es registren, per cada MID avaluat, els reads assignats a forward i reverse 
 cat("\nTable of reads identified by primer\n\n")
 print(mprres)
 cat("\n")
+# També afegeix la taula on s'indica la longitud dels reads i els haplotips detectats per cadena (treient el nom del fitxer)
 print(FlTbl[,-1])
+# Inclou la taula on es mostren els reads assignats per pacient, sumant les dues cadenes
 cat("\nTotal reads identified by patient\n\n")
 print(T.reads)
+# Mostra el rendiment d'aquest pas: els reads totals per pool (tots els MIDS de cada pool) i els que s'han assignat
 cat("\nYield by pool\n\n")
 print(PoolTbl)
 sink()
 
-###  Save tables
-
-# FlTbl <- FlTbl[FlTbl$Reads>0, ]  # Erase rows of null files
+### Guarda més taules de resultats
+# FlTbl <- FlTbl[FlTbl$Reads>0, ]  # Erase rows of null files -> Aquest codi no s'executa
+# Guarda les dades en un fitxer .RData
 save(FlTbl,PoolTbl,file=file.path(repDir,"SplittedReadsFileTable.RData"))
+# Guarda un altre fitxer .txt amb les dades incloses a cada fitxer .fna generat a la carpeta trim
 sink(file.path(repDir,"SplittedReadsFileTable.txt"))
 print(FlTbl)
 sink()
 
 
-###  Plot on A4 horizontally
+### Genera els gràfics de barres anteriors però en un full A4 horitzontal
 pdf.flnm <- paste(proj.nm,"SplitByPrimersOnFlash-hz.pdf",sep="_")
 pdf(file.path(repDir,pdf.flnm),paper="a4r",width=10,height=6)
 par(mar=c(7,4,4,2)+0.1)
@@ -553,18 +589,24 @@ axis(side=1,at=bp,rownames(T.reads),cex.axis=0.6,las=2)
 legend("top",horiz=TRUE,fill=pal2[1:2],legend=c("up","dn"))
 title(main="Primer matches by patient (# reads)")
 
+# També genera dos gràfics boxplot per representar els reads assignats a la cadena forward i reverse per pool
 par(mfrow=c(1,2))
-
+# Defineix el límit màxim de l'eix Y
 ymx <- max(c(res.mat[,1],res.mat[,2]))
+# Defineix els noms de les files de la taula de primers, amb la regió avaluada
 rownames(primers) <- primers$Ampl.Nm
+# Guarda el nom de la regió avaluada de totes les entrades classificades a la cadena forward
 reg <- primers[FlTbl$Ampl.Nm[FlTbl$Str=="fw"],"Region"]
+# Genera el boxplot dels reads assignats a la cadena forward en funció de la regió o pool
 boxplot(res.mat[,1]~reg,border="gray",outline=FALSE,
         xlab="",ylab="# of reads",ylim=c(0,ymx))
 points(jitter(as.integer(factor(reg)),a=0.15),res.mat[,1],
        pch="+",cex=0.8)
 title(main="Primers identified on forward reads")	   
 
+# Guarda el nom de la regió avaluada de totes les entrades classificades a la cadena reverse
 reg <- primers[FlTbl$Ampl.Nm[FlTbl$Str=="rv"],"Region"]
+# Genera el boxplot dels reads assignats a la cadena reverse en funció de la regió o pool
 boxplot(res.mat[,2]~reg,border="gray",outline=FALSE,
         xlab="",ylab="# of reads",ylim=c(0,ymx))
 points(jitter(as.integer(factor(reg)),a=0.15),res.mat[,2],
