@@ -11,67 +11,93 @@ zeroFillInt2Char <- function(x,ln)
 }
 
 
-###  Split seq names with counts and percentage 
-#################################################
+### Funció per separar els noms dels haplotips amb el recompte de reads i la freqüència
 split.fasta.names <- function(seqs,mnr=2)
-{ IDstr <- names(seqs)
+{ # Guarda els noms assignats a les seqüències de l'objecte DNAStringSet de l'argument
+  IDstr <- names(seqs)
+  # Guarda el total de noms assignats del pas anterior, és a dir el total d'haplotips
   n <- length(IDstr)
+  # Guarda un vector buit amb tantes entrades com haplotips
   nms <- character(length=n)
+  # Guarda una matriu buida amb n files (1 per haplotip) i dues columnes, definides amb 
+  # 'colnames()', on es guardaran en nº de reads de l'haplotip i la seva freqüència
   sts <- matrix(0,nrow=n,ncol=2)
   colnames(sts) <- c("nseqs","pct1")
+  # Iteració sobre el total d'haplotips del fitxer avaluat
   for(j in 1:n)
-  { strs <- strsplit(IDstr[j],split="\\|")[[1]]
+  { # Separa el nom de l'identificador de l'haplotip, que inclou 3 elements:
+    # 1) Nº de mutacions i ordre de l'haplotip dins del grup amb aquestes mutacions
+    # 2) Nº de reads de l'haplotip
+    # 3) Freq relativa dins de la mostra
+    strs <- strsplit(IDstr[j],split="\\|")[[1]]
+    # Guarda a la taula nms el primer element de l'identificador de l'haplotip corresponent
     nms[j] <- strs[1]
+    # Guarda a la 1a i 2a columna de la taula sts el 2n i 3r elements de l'identificador
     sts[j,] <- as.numeric(strs[2:3])
   }
+  # Guarda en un data frame els 3 elements de l'identificador de tots els haplotips separats per
+  # columnes
+  # NOTA: es podria simplificar per tal de guardar les variables directament a partir del bucle?
   IDs <- data.frame(ID=nms,sts,stringsAsFactors=FALSE)
+  # Guarda el nº de files del data frame (total d'haplotips)
   nall <- nrow(IDs)
+  # Realitza el sumatori de la columna amb el nº de reads per haplotip
   tnr <- sum(IDs$nseqs)
-  ###  Filter by minimum reads by haplotype
+  # Guarda el nº de reads majors al valor definit de minim nombre de reads
   flags <- IDs$nseqs >= mnr
+  # Retorna una llista amb un subset dels haplotips que presentin un nº de reads major al mínim definit,
+  # les seqüències dels haplotips que compleixen la condició, el nº de total d'haplotips i el sumatori de reads
   return(list(IDs=IDs[flags,],seqs=seqs[flags],nall=nall,tnr=tnr))
 }
 
 
-###  Read amplicon aligned sequences 
-#######################################
+### Funció per llegir els .fna amb els amplicons ja classificats i sense primers 
 read.ampl.seqs <- function(flnm,mnr=2)
-{ seqs <- as.character(readDNAStringSet(flnm))
-  return( split.fasta.names(seqs,mnr) )
+{ # Guarda les seqüències del fitxer fasta de l'argument obtingudes amb la funció 'readDNAStringSet()'
+  seqs <- as.character(readDNAStringSet(flnm))
+  # Aplica la funció definida anteriorment per obtenir tots els noms dels haplotips amb un nº de reads
+  # major al mínim definit i les seves dades
+  return(split.fasta.names(seqs,mnr)) # NOTA: es podrien fusionar les 2 funcions?
 }
 
 
-###  Escriu unes seqüencies a un fitxer fasta
-###############################################
-write.fasta <- function(seqs,flnm)
+###  Escriu unes seqüències a un fitxer fasta
+############################################### NOTA: aquesta i la següent es poden eliminar
+write.fasta <- function(seqs,flnm)            # i fer servir la funció de R
 { writeXStringSet(seqs,flnm) }
 
-
-###  Llegeix les seqüencies d'un fitxer fasta
-###############################################
+###  Llegeix les seqüències d'un fitxer fasta
+############################################### 
 read.fasta <- function(flnm)
 { readDNAStringSet(flnm) }
 
 
-###  Aliniament múltiple per muscle de les seqs
+###  Funció per a l'aliniament múltiple amb muscle de les seqs
 ###  Les seqüècies s'entren i es tornen com a DNAStringSet
-############################################################
-#muscle <- "C:\\Muscle\\muscle3.8.31_i86win32.exe"
-#muscle <- "D:\\UltraSeq\\muscle\\muscle3.8.31_i86win32.exe"
-#muscle <- "E:\\UltraSeq\\muscle\\muscle3.8.31_i86win32.exe"
-#muscle <- "C:\\Docs\\UltraSeq\\muscle\\muscle3.8.31_i86win32.exe"
+# Guarda la ruta de l'executable muscle (aquest es posarà al fitxer global)
+muscle <- "C:\\Muscle\\muscle3.8.31_i86win32.exe"
+# Guarda el nom del fitxer d'opcions de muscle que es guardarà a l'entorn global del projecte
 muscle.cl.opts <- c("-log muscle.log")
+
 doMuscle <- function(seqs)
-{ tmp.file <- file.path(tmp.Dir,"muscleInFile.fna")
+{ # Genera un fitxer al directori tmp per introduir les seqüències a alinear
+  tmp.file <- file.path(tmp.Dir,"muscleInFile.fna")
+  # Genera el fitxer al directori tmp que resultarà de l'alineament amb muscle
   res.file <- file.path(tmp.Dir,"muscleOutFile.fna")
+  # Si ja existeix l'arxiu de resultats, s'elimina per generar-lo de nou
   if(file.exists(res.file)) file.remove(res.file)
+  # Aplica la funció d'abans per escriure el fitxer fasta d'entrada amb les seqüències de l'argument
   write.fasta( seqs, tmp.file )
+  # Genera els fitxers in i out per a executar muscle
   in.file <- paste("-in ",tmp.file,sep="")
   out.file <- paste("-out ",res.file,sep="")
+  # Genera la comanda per executar muscle amb el fitxer .exe, els arxius in i out i el fitxer d'opcions
   command <- paste(muscle,in.file,out.file,
                 paste(muscle.cl.opts,collapse=" "),sep=" ")
+  # Empra la funció 'system()' per executar la comanda indicada abans i fer l'aliniament múltiple
   system(command,intern=FALSE,wait=TRUE,show.output.on.console=FALSE,
           ignore.stdout=FALSE,invisible=TRUE)
+  # Retorna el fitxer de resultats com a objecte DNAStringSet gràcies a la funció de llegir arxius fasta
   if( file.exists(res.file) )
     return( read.fasta(res.file) )
   return(NULL)
@@ -257,98 +283,153 @@ AmplStats <- function(seqs,nr)
 
 library(Biostrings)
 library(ape)
+
+# En aquest fitxer trobem tot tipus de funcions definides per l'anàlisi d'aquest script
 source("./R/seqanalfns.v4.5.R")
 
-###  Llegir la descripció de mostres
-#######################################
+### Llegeix l'estructura de descripció de mostres
 samples <- read.table(file.path(desc.Dir,"samples.csv"), sep="\t",
                       header=T,stringsAsFactors=F)
+### Llegeix el fitxer amb els primers
 primers <- read.table(file.path(desc.Dir,"primers.csv"), sep="\t",
                       header=T,stringsAsFactors=F)
+
+# Aquest codi no s'executa, es podria borrar?
 # RefSeqs <- read.table(file.path(desc.Dir,"RefSeqs.csv"), sep="\t",
                       # header=T,stringsAsFactor=F)
 
-#  Fitxers a tractar
-########################
+# Carrega el fitxer RData generat en el pas anterior del pipeline, on s'han eliminat els primers
+# de totes les seqüències les quals es classifiquen en forward o reverse 
 load(file=file.path(repDir,"SplittedReadsFileTable.RData"))
+# Retorna els indexs de la taula FlTbl derivats d'ordenar les mostres en funció de l'ID del
+# pacient, de l'amplicó (regió) avaluat i la cadena forward o reverse 
 o <- order(FlTbl$Pat.ID,FlTbl$Ampl.Nm,FlTbl$Str)
+# Reordena les entrades de la taula en funció dels indexs anteriors, de manera que s'agrupen
+# les entrades corresponents al mateix pacient i en segon ordre a la mateixa regió avaluada
 FlTbl <- FlTbl[o,]
-###  Compose fasta file names
+
+### Guarda els noms dels fitxers fasta inclosos al directori trim i els separa en funció
+# de la cadena asignada als reads
 in.files <- file.path(trimDir,FlTbl$File.Name)
 idx.fw <- which(FlTbl$Str=="fw")
 idx.rv <- which(FlTbl$Str=="rv")
 
+# Guarda els noms dels fitxers resultants d'aquest script, que correspondran a la concatenació
+# del terme MACHpl02, l'ID del pacient i el nom de la regió avaluada, indicats de manera que només
+# s'obtingui un fitxer .fna per a cada regió del mateix pacient (per això el condicional fw)
 out.flnms <- paste("MACHpl02",FlTbl$Pat.ID[idx.fw],
                FlTbl$Ampl.Nm[idx.fw],"fna",sep=".")
+# Guarda la ruta on es desaran els fitxers .fna, a la carpeta MACH
 out.flnms <- file.path(mach.Dir,out.flnms)
 
+# Guarda els noms d'uns altres fitxers resultants, que correspondran a la concatenació
+# del terme MAfwrv, l'ID del pacient i el nom de la regió avaluada, indicats de manera que només
+# s'obtingui un fitxer .fna per a cada regió del mateix pacient (per això el condicional fw)
 ma.flnms <- paste("MAfwrv",FlTbl$Pat.ID[idx.fw],
                FlTbl$Ampl.Nm[idx.fw],"fna",sep=".")
+# Guarda la ruta on es desaran els fitxers .fna, a la carpeta MACH
 ma.flnms <- file.path(mach.Dir,ma.flnms)
 
+# Guarda la meitat de la longitud de fitxers presents a la carpeta trim del fitxer previ 
 n <- length(in.files)/2
 
+# Genera un data frame inicialment buit, amb n files (2 entrades per pacient) i 5 columnes
+# que inclouran els resultats obtinguts en pasos posteriors per a les cadenes fw
 rdf.fw <- data.frame(fw.all=integer(n),fw.lowf=integer(n),
                      fw.in=integer(n),fw.unq=integer(n),fw.com=integer(n))
+# Genera un altre data frame també buit, amb n files i 5 columnes per incloure resultats
+# de les cadenes rv
 rdf.rv <- data.frame(rv.all=integer(n),rv.lowf=integer(n),
                      rv.in=integer(n),rv.unq=integer(n),rv.com=integer(n))
+# Genera un altre data frame buit, amb n files i 6 columnes
 rdf.gbl <- data.frame(all=integer(n),lowf=integer(n),unq=integer(n),
                       ovrlp=numeric(n),common=numeric(n),Fn.rd=integer(n))
 
+# Genera el primer fitxer pdf on s'inclouran diverses representacions de resultats
 pdf(file.path(repDir,"MA.Intersects.plots.pdf"),paper="a4",
     width=7,height=11)
 par(mfrow=c(3,1))
 
+# Bucle for per iterar sobre totes les mostres (2 per pacient)
 for(i in 1:n)
-{ 
+{ # Si no existeix el fitxer de la mostra avaluada a la carpeta trim, torna a començar la iteració següent
   if(!file.exists(in.files[idx.fw[i]])) next
   if(!file.exists(in.files[idx.rv[i]])) next
 
-  # Filtrat implicit per mnr = min.rd
-  lst1 <- read.ampl.seqs(in.files[idx.fw[i]],mnr=min.rd)
+  ## Filtrat implícit per mnr = min.rd (mínim nombre de reads, definit al fitxer de paràmetres)
+  # Aplica la funció definida al principi per obtenir els haplotips del fitxer .fna avaluat,
+  # en concret pels haplotips de la cadena forward
+  lst1 <- read.ampl.seqs(in.files[idx.fw[i]],mnr=min.rd) 
+  # Guarda el vector que inclou el nº de seqüències dels haplotips
   nr1 <- lst1$IDs$nseqs
+  # Guarda les seqüències dels haplotips amb més reads del mínim permès
   seqs <- lst1$seqs
-  # Eliminar les curtes
+  ## Guarda les seqüències de longitud major al mínim permès (definit al fitxer de paràmetres)
   fl <- nchar(seqs) >= min.seq.len
+  # Filtra les seqüències per eliminar les que presenten longitud menor al mínim permès
   nr1 <- nr1[fl]
   seqs <- seqs[fl]
-  # Filtrar per mínima abundància
+  ## Filtrar per mínima abundància
+  # a.cut (definit al fitxer principal) correspon al min d'abundancia per entrar 
+  # en l'aliniament múltiple (%)
+  # Guarda les seqüències que presenten una abundància major al mínim permès
   fl1 <- nr1/sum(nr1)*100 >= a.cut
+  ## Guarda a la taula de resultats per a cadenes fw:
+  # El total de reads de la mostra avaluada
   rdf.fw$fw.all[i]  <- sum(nr1)
+  # El nº de reads amb baixa freqüència (menor al mínim permès)
   rdf.fw$fw.lowf[i] <- sum(nr1[!fl1])
+  # Filtra les seqüències per eliminar les que presenten freq menor a la mínima permesa
   seqs <- seqs[fl1]
+  # Substitueix amb la funció 'sub()' el terme Hpl per HplFw en els noms de les seqüències
+  # de la mostra avaluada
   names(seqs) <- sub("Hpl","HplFw",names(seqs))
+  # Renom de la variable
   aseqs <- seqs
+  # Guarda la longitud del primer haplotip de la mostra
   rawln <- nchar(seqs[1])
 
-  # Filtrat implicit per mnr = min.rd
+  ## Aplica el mateix procés per a les cadenes classificades reverse de la mostra avaluada
+  ## Filtrat implicit per mnr = min.rd
+  # Aplica la funció definida al principi per obtenir els haplotips del fitxer .fna avaluat,
+  # en aquest cas dels haplotips de la cadena reverse de la mateixa mostra avaluada
   lst2 <- read.ampl.seqs(in.files[idx.rv[i]],mnr=min.rd) 
   nr2 <- lst2$IDs$nseqs
   seqs <- lst2$seqs
-  # Eliminar les curtes
+  ## Eliminar les seqüències més curtes del mínim permès
   fl <- nchar(seqs) >= min.seq.len
   nr2 <- nr2[fl]
   seqs <- seqs[fl]
-  # Filtrar per mínima abundància
+  ## Filtrar per mínima abundància
   fl2 <- nr2/sum(nr2)*100 >= a.cut
+  ## Afegeix els resultats a la taula per cadenes reverse
   rdf.rv$rv.all[i]  <- sum(nr2)
   rdf.rv$rv.lowf[i] <- sum(nr2[!fl2])
   seqs <- seqs[fl2]
   names(seqs) <- sub("Hpl","HplRv",names(seqs))
+  
+  ## Afegeix a la variable d'abans (amb les cadenes fw) les cadenes rv filtrades
   aseqs <- c(aseqs,seqs)
-
+  # Guarda l'identificador del primer emprat per a l'amplificació de la mostra avaluada
   ipr <- FlTbl$Pr.ID[idx.fw[i]]
 
-  ###  Aliniament múltiple per muscle de hpl fw, hpl rv i RefSeq
+  
+  ###  Aliniament múltiple per muscle dels haplotips fw, rv i seqüències RefSeq
+  # Guarda el resultat de l'aliniament múltiple realitzat amb la funció definida al principi
   seqs <- doMuscle(DNAStringSet(aseqs))
+  # Copia el fitxer resultant de l'aliniament múltiple al directori MACH per guardar l'aliniament 
+  # dels haplotips de la mostra avaluada
   file.copy(file.path(tmp.Dir,"muscleOutFile.fna"),ma.flnms[i],
             overwrite=TRUE)
 
+  # Aplica la funció per obtenir els noms dels haplotips i les seves dades
   lst <- split.fasta.names(as.character(seqs))
+  # Guarda el vector que inclou el nº de seqüències dels haplotips
   nr <- lst$IDs$nseqs
+  # Guarda les seqüències dels haplotips amb més reads del mínim permès (per defecte a la funció mnr=2)
   seqs <- lst$seqs
 
-  ###  Separar FW i RV ja aliniades
+#####  Separar FW i RV ja aliniades
   ifw <- grep("^HplFw",names(seqs))
   irv <- grep("^HplRv",names(seqs))
 
