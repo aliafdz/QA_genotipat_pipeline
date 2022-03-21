@@ -16,6 +16,15 @@ if(!exists("elementLengths"))
                               # de coincidències per cada patró cercat
 	}
 
+### Aquesta part està modificada respecte el fitxer original
+### Afegim l'executable muscle necessari per alguns arxius del pipeline, així no es donaran errors per no trobar
+  # la ruta de l'arxiu al canviar d'ordinador
+muscle <- "C:\\Muscle\\muscle3.8.31_i86win32.exe"
+# Afegim un test per comprovar que el fitxer existeix i es pot executar correctament
+if(!file.exists(muscle)){
+  stop("Indica la ruta correcta de l'executable muscle")
+}
+
 tm <- integer(10)
 
 cat("\nSplit by MIDs\n")
