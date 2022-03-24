@@ -272,7 +272,7 @@ SaveHaplotypes <- function(flnm,bseqs,nr,max.difs=250)  #,seq0)
   o <- order(nm)
   # Ordena les seqs segons el seu nº de mutacions respecte la màster
   bseqs <- bseqs[o]
-  # Ordena també les freqüències segons el nº de mutacions de la seqüència
+  # Ordena també les freqüències (reads) segons el nº de mutacions de la seqüència
   nr <- nr[o]
   # Ordena la variable amb el nº de mismatches segons les mutacions (ordre ascendent)
   nm <- nm[o]
@@ -287,7 +287,7 @@ SaveHaplotypes <- function(flnm,bseqs,nr,max.difs=250)  #,seq0)
   isq <- unlist(sapply(1:length(tnm),function(i) 1:tnm[i]))
   
   ## Ordena per freqüència descendent dins de cada nombre de mutacions:
-  # as.integer(names(tnm) retorna els valors de 1 fins al total de mutacions trobades
+  # as.integer(names(tnm)) retorna els valors de 1 fins al total de mutacions trobades
   for(i in as.integer(names(tnm)))
   { # Indexs de les seqüències que presenten aquell nº de mutacions (i) respecte la màster
     idx <- which(nm==i)
