@@ -23,7 +23,7 @@ pools <- unique(samples$Pool.Nm)
 mids <- read.table(file.path(dataDir,"mids.csv"), sep="\t", header=T,
                    stringsAsFactors=F)
 
-###  Llista de fitxers fastq disponibles en la carpeta flash 
+###  Llista de fitxers fastq disponibles en la carpeta flashFilt (directori redefinit) 
 flnms <- list.files(flashDir)
 
 ###  Inicialitzacions

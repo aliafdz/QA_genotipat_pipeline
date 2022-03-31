@@ -177,17 +177,18 @@ Intersect.FWRV <- function(nA,seqsA,nB,seqsB)
   # per aquells haplotips coincidents en ambdues cadenes
   pFW <- (lst$pA/sum(lst$pA))[fl]
   pRV <- (lst$pB/sum(lst$pB))[fl]
-  # Indica el valor mínim de freq al comparar cada parella d'haplotips coincidents -> intersecció
+  # Indica el valor mínim de freq al comparar cada parella d'haplotips coincidents -> freq mínima d'intersecció
   p <- pmin(pFW,pRV) 
   # Calcula el sumatori de tots els valors mínims de freq calculats entre les parelles coincidents
+  # Aquest valor correspondrà al percentatge de superfície que solapa entre ambdues cadenes
   ov.i <- sum(p)
   # Ara renormalitza les dades dividint cada valor mínim de freq entre el sumatori de totes 
   p <- p/sum(p)
   ## Retorna una llista que inclou, en ordre:
   # 1) Freq relatives dels haplotips normalitzades
   # 2) Seqüències dels haplotips coincidents en FW i RV
-  # 3) Valor sumatori de tots els valors mínims de freq calculats entre les parelles coincidents
-  # 4) Fracció de reads comuns entres les cadenes respecte el total
+  # 3) Total de superfície que solapa entre ambdues cadenes
+  # 4) Fracció de reads comuns entre les cadenes respecte el total
   # 5) Vector amb el nº de seqs dels haplotips FW que entraven a la intersecció (després de filtrar per abundància)
   # 6) Vector amb el nº de seqs dels haplotips RV que entraven a la intersecció
   list(p=p,seqs=lst$Hpl[fl],ov.i=ov.i,ov.a=ov.a,pA=lst$pA,pB=lst$pB)
@@ -554,6 +555,7 @@ for(i in 1:n)
   # El total de reads FW+RV de la mostra avaluada
   rdf.gbl$all[i]    <- rdf.fw$fw.all[i]+rdf.rv$rv.all[i]
   # Sumatori de tots els valors mínims de freq calculats entre les parelles coincidents: intersecció entre reads
+  # Percentatge de superfície que solapa entre ambdues cadenes
   rdf.gbl$ovrlp[i]  <- round(lst$ov.i*100,2)
   # Percentatge de reads dels haplotips coincidents en FW i RV: % de reads comuns respecte el total
   # Coincideix amb el resultat de dividir els reads que han coincidit (suma de fw.com i rv.com) entre els reads
@@ -717,13 +719,13 @@ title(main="FW + RV intersection yield",line=1)
 ### Carregar PoolTbl i Fltbl 
 # Carrega el fitxer RData generat en el pas anterior del pipeline, on s'han eliminat els primers
 # de totes les seqüències les quals es classifiquen en forward o reverse 
-# Nota: això ja es fa al principi del script, redundant
+# Nota: això ja es fa al principi del script
 load(file=file.path(repDir,"SplittedReadsFileTable.RData"))
 
 ## Guarda els noms concatenants l'ID dels pacients i la regió amplificada separats per punt
 all.nms <- paste(FlTbl$Pat.ID,FlTbl$Ampl.Nm,sep=".")
 # Realitza el sumatori dels reads FW i RV de cadascuna de les mostres
-# Nota: no calia fer el sumatori, es podria obtenir de la taula rdf.gbl (columna all)
+# Nota: es podria obtenir de la taula rdf.gbl (columna all)
 trds <- tapply(FlTbl$Reads,all.nms,sum)
 # Actualitza el vector amb els noms per eliminar els duplicats, ja que al fer el sumatori
 # pasa a tenir una única entrada per mostra (i no 2 quan tenia FW i RV)

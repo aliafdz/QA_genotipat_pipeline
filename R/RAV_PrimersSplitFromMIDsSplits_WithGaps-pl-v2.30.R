@@ -164,6 +164,9 @@ for(i in 1:length(pools))
     # Llegeix el fitxer .fna del MID de la mostra avaluada
 	  seqs <- readDNAStringSet(file.path(splitDir,flnms[j]))
 	  
+	  ### Per guardar el nº total de reads abans de demultiplexar per primers:
+	  # totalseqs <- length(seqs)
+	  
 	  # Afegeix el total de reads del fitxer del MID concret al total del pool al qual correspon
 	  p.cv[i] <- p.cv[i] + length(seqs)
     
@@ -301,7 +304,9 @@ for(i in 1:length(pools))
   	# Posició del genoma de HBV en la que comença l'amplicó (després d'eliminar els primers)
   	FlTbl$Pos[k] <- primers$FW.tpos[ipr]
   	# Mitjana de longitud de les seqüències després de retallar-les
-  	FlTbl$Len[k] <- mean(width(seqs.up))
+  	  # Comprovant els valors de width(seqs.up) es pot veure que no totes les seqüències tenen
+  	  # la mateixa longitud, per tant es fa la mitjana de totes
+  	FlTbl$Len[k] <- mean(width(seqs.up)) #### 
   	# Sumatori del total de reads en el MID avaluat (mostra) que s'han assignat
     FlTbl$Reads[k] <- sum(nr)				   
     # Total d'haplotips detectats
@@ -316,7 +321,8 @@ for(i in 1:length(pools))
   	# Reads que s'han pogut associar a la cadena FW
     pr.res[k,2] <- sum(flags)
     # La variable shorts és 0 osigui que el sumatori també ho és
-    pr.res[k,3] <- sum(shorts)
+      # Hauria de correspondre als reads que no cobreixen l'amplicó sencer
+    pr.res[k,3] <- sum(shorts) #### 
     # Sumatori del total de reads en el MID avaluat (mostra) que s'han assignat
     pr.res[k,4] <- sum(nr)
   
@@ -436,18 +442,22 @@ for(i in 1:length(pools))
   	FlTbl$Ampl.Nm[k] <- primers$Ampl.Nm[ipr]
   	FlTbl$Pr.ID[k] <- ipr
   	FlTbl$Str[k] <- "rv"
-  	FlTbl$Pos[k] <- primers$FW.tpos[ipr]
-  	# Hauria de ser la longitud de les seqüències després de retallar-les però la variable és 0??
-  	FlTbl$Len[k] <- trim.len ### 
+  	# Després de fer la reversa complementària de les cadenes dn (reverse), ambdues cadenes
+  	# es troben el mateix sentit, per tant la posició inicial és la mateixa
+  	FlTbl$Pos[k] <- primers$FW.tpos[ipr] 
+  	# La variable és 0 i no s'actualitza el seu valor
+  	  # Si es volgués canviar igual que per les cadenes forward, es podria afegir:
+  	  # mean(width(seqs.dn))
+  	FlTbl$Len[k] <- trim.len #### 
     FlTbl$Reads[k] <- sum(nr)				   
     FlTbl$Hpls[k] <- length(nr)				   
     
     # Afegeix el nº de reads (del MID concret) idenficats amb la cadena FW al total del pool al qual correspon	  
   	p.ok[i] <- p.ok[i] + sum(nr)
   	# Guarda tots els resultats igual que en el cas de les cadenes up (forward) a l'altra taula (nº de reads per pas)
-  	pr.res[k,1] <- length(seqs)
+  	pr.res[k,1] <- length(seqs) #### 
     pr.res[k,2] <- sum(flags)
-    pr.res[k,3] <- sum(shorts)
+    pr.res[k,3] <- sum(shorts) #### 
     pr.res[k,4] <- sum(nr)
     
   } # Fi del loop sobre totes les mostres corresponents al pool avaluat
@@ -483,13 +493,15 @@ rv.idx <- which(FlTbl$Str=="rv")
 # reads associats a cadascuna de les dues cadenes (per separat) i sumatori del total de reads en el MID avaluat (mostra) que s'han assignat
 mprres <- data.frame(PatID=FlTbl$Pat.ID[fw.idx],
                      PrimerID=FlTbl$Ampl.Nm[fw.idx],
-                     Treads=pr.res[fw.idx,1], ### Revisar aquesta variable
-					 Shorts=pr.res[fw.idx,3]+pr.res[rv.idx,3],
+                     # Revisar variable Treads: correspon als reads que no han coincidit per la cadena FW
+                     Treads=pr.res[fw.idx,1], #### Perquè fos el total de reads caldria calcular length(seqs) 
+                                                 # just després de carregar el fitxer de la carpeta splits
+					 Shorts=pr.res[fw.idx,3]+pr.res[rv.idx,3], # En aquest cas és 0 perquè la variable shorts no s'actualitza
                      FW.match=pr.res[fw.idx,4],
                      RV.match=pr.res[rv.idx,4],
 					 Fn.reads=pr.res[fw.idx,4]+pr.res[rv.idx,4],
                      stringsAsFactors=FALSE)
-# Canvia el nom de la variable(? No sé si és necessari
+# Canvia el nom de la variable
 mres <- mprres
 # Calcula el sumatori dels reads assignats a cadena forward o reverse en funció dels pacients, és a dir,
 # suma els reads assignats per a les dues regions del HBV avaluades
