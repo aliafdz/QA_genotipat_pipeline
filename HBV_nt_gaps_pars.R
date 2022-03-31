@@ -1,4 +1,4 @@
-﻿
+
 ############################################################
 ###  PARAMETRES DEL PIPE-LINE DE InDels i Genotypat de HBV
 ############################################################
@@ -10,10 +10,10 @@ stopifnot(require(RColorBrewer))
 dataDir <- "./data"
 codeDir <- "./R"
 runDir <- "./run"
-flashDir <- "./flashFilt"
+flashDir <- "./flashFilt" # Important!! Es redefineix el directori respecte QA
 splitDir <- "./splits"
 trimDir <- "./trim"
-filtDir <- "./filt"
+filtDir <- "./filt" # Aquest directori no es fa servir!
 joinDir <- "./join"
 repDir <- "./reports"
 resultsDir <- resDir <- "./results"
