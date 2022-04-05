@@ -15,8 +15,9 @@ codeDir <- "./R"
 dataDir <- "./data"
 # On es depositen els arxius fastq.gz
 runDir <- "./run"
-# Crec que aquests dos només incorporen alguns arxius que generem en els passos del pipeline. 
+# Dades processades per FLASH (extensió de reads aparellats) 
 flashDir <- "./flash"
+# Dades filtrades per Q30
 flashFiltDir <- "./flashFilt"
 # Arxius resultants del pipeline a nivell de qualitat. 
 repDir <- "./reports"
@@ -67,7 +68,7 @@ cat("\nRunning length peaks on FLASH fastq files\n")
 print( (tm[5] = system.time( source("./R/LenPeaksByPool-v1.R") )[3]) ) 
 rm(list=setdiff(ls(),par.nms))
 
-###  Accept max of 5% bases below Q30 by read
+### Accepta com a màxim un 5% de les bases dels reads per sota de Q30
 ThrQ30 <- 0.05
 cat("\nFiltering haplotypes by Q30\n")
 print( (tm[6] = system.time( source("./R/FiltByQ30-v1.1.R") )[3]) ) 

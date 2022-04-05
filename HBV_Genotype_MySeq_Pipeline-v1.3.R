@@ -3,12 +3,15 @@
 ###     HBV - GAPS ANALYSIS + GENOTIPAT PIPELINE     ###
 ########################################################
 
+# Defineix el nom del projecte
 proj.nm <- "BQ68"
 
-source("HBV_nt_gaps_pars.R")
+source("HBV_nt_gaps_pars.R")  # Executa el codi on es defineixen els paràmetres del processament
 
 #source("NewCode2OldRvers.R")  # Per córrer en versions anteriors a la 3.
 
+# La funció 'elementLengths()' està desactualitzada i ara correspon a la funció 'elementNROWS()', 
+# d'aquesta manera s'eviten errors en l'execució
 if(!exists("elementLengths"))
   if(exists("elementNROWS"))
     { elementLengths <- function(x)
@@ -45,8 +48,10 @@ cat("\nPlot insertions and deletions\n")
 print( (tm[4] = system.time( source("./R/InsDelsByMA-v1.2.R") )[3]) ) 
 
 cat("\nCoverage, haplotypes and max difs\n")
-print( (tm[5] = system.time( source("./R/NtFastasSummary-v1.2.R") )[3]) ) 
+print( (tm[5] = system.time( source("./R/NtFastasSummary-v1.2.R") )[3]) ) ###
 
+
+### Els arxius a partir d'aquí no s'han inclòs en la revisió realitzada en el TFM ###
 cat("\nGenotyping by 5pHBx\n")
 print( (tm[6] = system.time( source("./R/ClassifHpl-HBV-5pHBx-v10.R") )[3]) ) 
 
