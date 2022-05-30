@@ -4,13 +4,11 @@
 ########################################################
 
 # Defineix el nom del projecte
-proj.nm <- "BQ68"
+proj.nm <- "VHBass3"
 
 source("HBV_nt_gaps_pars.R")  # Executa el codi on es defineixen els paràmetres del processament
 
-#source("NewCode2OldRvers.R")  # Per córrer en versions anteriors a la 3.
-
-# La funció 'elementLengths()' està desactualitzada i ara correspon a la funció 'elementNROWS()', 
+# La funció 'elementLengths()' està desactualitzada i ara correspon a la funció 'elementNROWS()',
 # d'aquesta manera s'eviten errors en l'execució
 if(!exists("elementLengths"))
   if(exists("elementNROWS"))
@@ -31,40 +29,40 @@ if(!file.exists(muscle)){
 tm <- integer(10)
 
 cat("\nSplit by MIDs\n")
-print( (tm[1] = system.time( 
-         source("./R/BigFilesSplitMIDs-v1.27.R") )[3]) ) 
+print( (tm[1] = system.time(
+         source("./R/BigFilesSplitMIDs-v1.27.R") )[3]) )
 
 cat("\nTrimming adaptors and primers\n")
-print( (tm[1] = system.time( 
-         source("./R/RAV_PrimersSplitFromMIDsSplits_WithGaps-pl-v2.30.R") )[3]) ) 
+print( (tm[2] = system.time(
+         source("./R/RAV_PrimersSplitFromMIDsSplits_WithGaps-pl-v2.30.R") )[3]) )
 
 cat("\nConsensus haplotypes by multiple alignment\n")
-print( (tm[2] = system.time( source("./R/RawConsHaplosByMA-v1.6.R") )[3]) ) 
+print( (tm[3] = system.time( source("./R/RawConsHaplosByMA-v1.6.R") )[3]) )
 
 cat("\nGlobal yield by step in pools\n")
-print( (tm[3] = system.time( source("./R/GlobalYieldByPool-v1.2.R") )[3]) ) 
+print( (tm[4] = system.time( source("./R/GlobalYieldByPool-v1.2.R") )[3]) )
 
 cat("\nPlot insertions and deletions\n")
-print( (tm[4] = system.time( source("./R/InsDelsByMA-v1.2.R") )[3]) ) 
+print( (tm[5] = system.time( source("./R/InsDelsByMA-v1.2.R") )[3]) )
 
 cat("\nCoverage, haplotypes and max difs\n")
-print( (tm[5] = system.time( source("./R/NtFastasSummary-v1.2.R") )[3]) ) ###
+print( (tm[6] = system.time( source("./R/NtFastasSummary-v1.2.R") )[3]) ) ###
 
 
 ### Els arxius a partir d'aquí no s'han inclòs en la revisió realitzada en el TFM ###
 cat("\nGenotyping by 5pHBx\n")
-print( (tm[6] = system.time( source("./R/ClassifHpl-HBV-5pHBx-v10.R") )[3]) ) 
+print( (tm[7] = system.time( source("./R/ClassifHpl-HBV-5pHBx-v10.R") )[3]) )
 
 cat("\nGenotyping by PreS1\n")
-print( (tm[7] = system.time( source("./R/ClassifHpl-HBV-PreS1-v10.R") )[3]) ) 
+print( (tm[8] = system.time( source("./R/ClassifHpl-HBV-PreS1-v10.R") )[3]) )
 
 cat("\nIntegrate genotyping by both regions\n")
-print( (tm[8] = 
-   system.time( source("./R/Integrate_5pX_PreS1_Genotyping-v2.R") )[3]) ) 
+print( (tm[9] =
+   system.time( source("./R/Integrate_5pX_PreS1_Genotyping-v2.R") )[3]) )
 
 cat("\nTest possible contaminations\n")
-print( (tm[9] = 
-   system.time( source("./R/AllHaplotype.Tree&Equivalencies-v2.1.R") )[3]) ) 
+print( (tm[10] =
+   system.time( source("./R/AllHaplotype.Tree&Equivalencies-v2.1.R") )[3]) )
 
 ###  End of pipeline
 cat("\nEnd of MiSeq nucleotide pipeline")
